@@ -20,7 +20,7 @@ fn main() {
             Ok(Command::Exit) => return,
             Ok(Command::Echo) => println!("{}", remainder.trim()),
             Ok(Command::Type) => match Command::from_str(remainder.trim()) {
-                Ok(_) => println!("{} is a shell builtin.", remainder.trim()),
+                Ok(_) => println!("{} is a shell builtin", remainder.trim()),
                 Err(_) => println!("{}: command not found", remainder.trim()),
             },
             _ => println!("{}: command not found", input.trim()),
