@@ -8,9 +8,14 @@ fn main() {
         io::stdout().flush().unwrap();
 
         let mut command = String::new();
-        match io::stdin().read_line(&mut command) {
+        io::stdin()
+            .read_line(&mut command)
+            .expect("unable to read user input");
+        // we are okay to panic on this failure right now.
+        match command.trim() {
+            "exit" => return,
             _ => println!("{}: command not found", command.trim()),
-        };
+        }
     }
     // 1. Read: Display a prompt and wait for user input
     // 2. Eval: Parse and execute the command
