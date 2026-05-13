@@ -12,19 +12,7 @@ fn main() {
         io::stdin()
             .read_line(&mut input)
             .expect("unable to read user input");
-        // we are okay to panic on this failure right now.
-
-        let (command, remainder) = input.split_once(" ").unwrap_or((&input, ""));
-
-        match Command::from_str(command.trim()) {
-            Ok(Command::Exit) => return,
-            Ok(Command::Echo) => println!("{}", remainder.trim()),
-            Ok(Command::Type) => match Command::from_str(remainder.trim()) {
-                Ok(_) => println!("{} is a shell builtin", remainder.trim()),
-                Err(_) => println!("{}: not found", remainder.trim()),
-            },
-            _ => println!("{}: command not found", input.trim()),
-        }
+        eval(&input);
     }
 }
 
@@ -38,8 +26,27 @@ enum Command {
     Type,
 }
 
-// I need some way to check if the command exists. I want to use pattern matching.
-//
-// map{ command: function } -> all of the available commands
-// when I get type, I see if the remainder exists
-// current match restrictions: it's only on command.trim() that we're matching, not callable.
+impl Command {
+    fn handle_echo(input: &str) {
+        println!("{input}");
+    }
+
+    fn handle_type(input: &str) {
+        if Command::from_str(input).is_ok() {
+            println!("{input} is a shell builtin")
+        } else {
+            println!("{input}: not found")
+        }
+    }
+}
+
+fn eval(input: &str) {
+    let (command, remainder) = input.split_once(" ").unwrap_or((&input, ""));
+
+    match Command::from_str(command.trim()) {
+        Ok(Command::Exit) => return,
+        Ok(Command::Echo) => Command::handle_echo(remainder.trim()),
+        Ok(Command::Type) => Command::handle_type(remainder.trim()),
+        _ => println!("{}: command not found", input.trim()),
+    }
+}

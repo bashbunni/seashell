@@ -2,6 +2,14 @@
 * Lessons Learned
 ** ctrl-c
 supported by default to quit the application. You can also use ~ctrlc~ crate to control ctrlc behaviour.
+** make it _really_ ugly first, then clean it up
+// I need some way to check if the command exists. I want to use pattern matching.
+//
+// map{ command: function } -> all of the available commands
+// when I get type, I see if the remainder exists
+// current match restrictions: it's only on command.trim() that we're matching, not callable.
+
+I almost got caught going in circles for a solution trying to find the  "best" one, when it's easier to go from a specific point.
 * TODOs
 ** look at ~unwrap_or_else~
 if let Some() vs unwrap
