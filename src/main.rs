@@ -3,11 +3,17 @@ use std::io::{self, Write};
 
 fn main() {
     // TODO: Uncomment the code below to pass the first stage
-    print!("$ ");
-    io::stdout().flush().unwrap();
+    loop {
+        print!("$ ");
+        io::stdout().flush().unwrap();
 
-    let mut command = String::new();
-    match io::stdin().read_line(&mut command) {
-        _ => print!("{}: command not found", command.trim()),
-    };
+        let mut command = String::new();
+        match io::stdin().read_line(&mut command) {
+            _ => println!("{}: command not found", command.trim()),
+        };
+    }
+    // 1. Read: Display a prompt and wait for user input
+    // 2. Eval: Parse and execute the command
+    // 3. Print: Display the output or error message
+    // 4. Loop: Return to step 1 and wait for the next command
 }
