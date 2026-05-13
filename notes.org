@@ -2,3 +2,6 @@
 * Lessons Learned
 ** ctrl-c
 supported by default to quit the application. You can also use ~ctrlc~ crate to control ctrlc behaviour.
+* TODOs
+** look at ~unwrap_or_else~
+if let Some() vs unwrap
