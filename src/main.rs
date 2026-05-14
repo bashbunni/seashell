@@ -6,6 +6,7 @@ use std::{
     env::{self},
     str::FromStr,
 };
+use std::ffi::{OsString};
 use strum_macros::EnumString;
 
 // for type:
@@ -44,19 +45,11 @@ impl Command {
     }
 
     fn handle_type(input: &str) {
-        // check provided path.
-        let mut paths: Vec<PathBuf> = vec![];
-        if let Some(path) = std::env::var_os("PATH") {
-            // we have a match, now we need to split this up, and check them all for
-            // the executable.
-            paths = env::split_paths(&path).collect();
-        };
-
         // check if it's a built-in
         if Command::from_str(input).is_ok() {
             println!("{input} is a shell builtin")
-        } else if !paths.is_empty() {
-            handle_path(&paths, input);
+        } else if let Some(path) = env::var_os("PATH") {
+            handle_path(path, input);
         } else {
             println!("{input}: not found")
         }
@@ -76,17 +69,14 @@ fn eval(input: &str) {
 
 // TODO make this logic/operation happen within a map of the original collection.
 // A path was provided, so we split it up, check the dirs for an executable.
-fn handle_path(paths: &[PathBuf], command: &str) {
-    for p in paths {
-        if p.exists() {
-            let exec_path = p.join(command);
-            if exec_path.exists()
-                && exec_path.is_executable()
-                && let Ok(path_str) = exec_path.into_os_string().into_string()
-            {
-                println!("{command} is {path_str}");
-                return;
-            }
-        }
-    }
-}
+fn handle_path(path: OsString, input: &str) {
+            env::split_paths(&path).find(|p| {
+                if p.join(input).is_executable()
+                    && let Ok(path_str) = p.join(input).into_os_string().into_string()
+                {
+                    println!("{input} is {path_str}");
+                    return true;
+                }
+                return false;
+            });
+   }

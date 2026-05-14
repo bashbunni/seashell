@@ -15,3 +15,4 @@ I almost got caught going in circles for a solution trying to find the  "best" o
 if let Some() vs unwrap
 ** look at strum
 can do "fancy stuff"....
+** look at generics (paths in particular)
