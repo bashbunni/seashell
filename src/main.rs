@@ -118,7 +118,7 @@ fn exec(input: &str, args: &[&str]) {
     }
 }
 
-// returns executable path if one is found.
+// return executable path if one is found.
 fn find_executable(input: &str) -> Option<PathBuf> {
     env::var_os("PATH").and_then(|path| {
         env::split_paths(&path).find_map(|dir| {
