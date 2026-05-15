@@ -97,7 +97,6 @@ fn eval(input: &str) {
 
 // execute a command
 fn exec(input: &str, args: &[&str]) {
-    println!("{input}, {args:?}");
     match find_executable(input) {
         Some(exec_path) => {
             if let Some(exec_name) = exec_path.file_name() {
