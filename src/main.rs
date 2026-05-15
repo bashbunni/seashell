@@ -86,19 +86,21 @@ fn eval(input: &str) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", remainder),
         Ok(Command::Type) => Command::handle_type(remainder),
-        _ => match find_executable(command.trim()) {
+        _ => match find_executable(command) {
             Some(exec_path) => {
                 let args: Vec<&str> = remainder
                     .split(" ")
                     .filter(|x| !x.is_empty())
                     .map(|x| x.trim())
                     .collect();
-                let mut exec_command = std::process::Command::new(exec_path);
-                match exec_command.args(&args).spawn() {
-                    Ok(mut child) => {
-                        child.wait().ok();
+                if let Some(exec_name) = exec_path.file_name() {
+                    let mut exec_command = std::process::Command::new(exec_name);
+                    match exec_command.args(&args).spawn() {
+                        Ok(mut child) => {
+                            child.wait().ok();
+                        }
+                        Err(err) => eprintln!("unable to execute command: {err}"),
                     }
-                    Err(err) => eprintln!("unable to execute command: {err}"),
                 }
             }
             None => println!("{}: command not found", input.trim()),
