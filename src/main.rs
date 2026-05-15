@@ -88,7 +88,6 @@ fn eval(input: &str) {
         Ok(Command::Type) => Command::handle_type(remainder),
         _ => match find_executable(command.trim()) {
             Some(exec_path) => {
-                println!("{}", exec_path.display());
                 let args: Vec<&str> = remainder
                     .split(" ")
                     .filter(|x| !x.is_empty())
