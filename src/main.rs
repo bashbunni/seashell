@@ -2,6 +2,7 @@ use is_executable::IsExecutable;
 use std::ffi::OsString;
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::{
     env::{self},
@@ -69,6 +70,13 @@ fn eval(input: &str) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", remainder.trim()),
         Ok(Command::Type) => Command::handle_type(remainder.trim()),
-        _ => println!("{}: command not found", input.trim()),
+        _ => match find_executable(command) {
+            Some(exec_path) => {
+                let args: Vec<&str> = remainder.split(" ").collect();
+                let err = std::process::Command::new(exec_path).args(args).exec(); // apparently if this returns, then there was a problem.
+                println!("unable to execute command: {err}");
+            }
+            None => println!("{}: command not found", input.trim()),
+        },
     }
 }
