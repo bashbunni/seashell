@@ -40,41 +40,34 @@ enum Command {
 }
 
 impl Command {
-    fn handle_echo(input: &str) {
-        println!("{input}");
-    }
-
     fn handle_type(input: &str) {
-        // check if it's a built-in
-        if Command::from_str(input).is_ok() {
-            println!("{input} is a shell builtin");
-            return;
+        match Command::from_str(input) {
+            Ok(_) => println!("{input} is a shell builtin"),
+            Err(_) => match find_executable(input) {
+                Some(exec_path) => println!("{input} is {}", exec_path.display()),
+                None => println!("{input}: not found"),
+            },
         }
-
-        // check the path
-        let path_env = env::var_os("PATH").and_then(|path| {
-            env::split_paths(&path).find_map(|dir| {
-                let exec_path = dir.join(input);
-                exec_path.is_executable().then_some(exec_path)
-            })
-        });
-
-        if let Some(exec_path) = path_env {
-            println!("{input} is {}", exec_path.display());
-            return;
-        }
-
-        // nothing found
-        println!("{input}: not found")
     }
 }
 
+// returns executable path if one is found.
+fn find_executable(input: &str) -> Option<PathBuf> {
+    env::var_os("PATH").and_then(|path| {
+        env::split_paths(&path).find_map(|dir| {
+            let exec_path = dir.join(input);
+            exec_path.is_executable().then_some(exec_path)
+        })
+    })
+}
+
+// evaluate commands
 fn eval(input: &str) {
     let (command, remainder) = input.split_once(" ").unwrap_or((input, ""));
 
     match Command::from_str(command.trim()) {
         Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => Command::handle_echo(remainder.trim()),
+        Ok(Command::Echo) => println!("{}", remainder.trim()),
         Ok(Command::Type) => Command::handle_type(remainder.trim()),
         _ => println!("{}: command not found", input.trim()),
     }
