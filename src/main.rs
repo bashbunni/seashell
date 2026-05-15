@@ -4,10 +4,8 @@ use std::ffi::OsString;
 use std::io::{self, Write};
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
-use std::{
-    env::{self},
-    str::FromStr,
-};
+use std::process;
+use std::{env, str::FromStr};
 use strum_macros::EnumString;
 
 // for type:
@@ -36,14 +34,14 @@ fn run() {
 
 #[derive(EnumString)]
 enum Command {
+    #[strum(serialize = "\n")]
+    Enter,
     #[strum(serialize = "exit")]
     Exit,
     #[strum(serialize = "echo")]
     Echo,
     #[strum(serialize = "type")]
     Type,
-    #[strum(serialize = "\n")]
-    Enter,
 }
 
 impl Command {
@@ -63,7 +61,6 @@ fn find_executable(input: &str) -> Option<PathBuf> {
     env::var_os("PATH").and_then(|path| {
         env::split_paths(&path).find_map(|dir| {
             let exec_path = dir.join(input);
-            // TODO I think is_executable fails if the args are invalid
             exec_path.is_executable().then_some(exec_path)
         })
     })
