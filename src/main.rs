@@ -103,9 +103,9 @@ fn exec(input: &str, args: &[&str]) {
             if let Some(exec_name) = exec_path.file_name() {
                 let mut exec_command = std::process::Command::new(exec_name);
                 let result: Result<process::Child, io::Error> = if args.is_empty() {
-                    exec_command.args(args).spawn()
-                } else {
                     exec_command.spawn()
+                } else {
+                    exec_command.args(args).spawn()
                 };
                 match result {
                     Ok(mut child) => {
