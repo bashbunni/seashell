@@ -1,10 +1,7 @@
-use anyhow::Error;
 use is_executable::IsExecutable;
-use std::ffi::OsString;
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::os::unix::process::CommandExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::{env, str::FromStr};
 use strum_macros::{Display, EnumString};
@@ -45,6 +42,8 @@ enum Command {
     Type,
     #[strum(serialize = "pwd")]
     Pwd,
+    #[strum(serialize = "cd")]
+    Cd,
 }
 
 impl Command {
@@ -63,6 +62,16 @@ impl Command {
             Ok(pwd) => println!("{}", pwd.display()),
             Err(e) => eprintln!("unexpected error: {e}"),
         }
+    }
+
+    fn handle_cd(input: &str) {
+        let path = Path::new(input);
+        if path.is_dir() {
+            if env::set_current_dir(path).is_ok() {
+                return;
+            };
+        }
+        println!("cd: {}: No such file or directory", path.display());
     }
 }
 
@@ -89,8 +98,9 @@ fn eval(input: &str) {
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", remainder),
-        Ok(Command::Pwd) => Command::handle_pwd(),
         Ok(Command::Type) => Command::handle_type(remainder),
+        Ok(Command::Pwd) => Command::handle_pwd(),
+        Ok(Command::Cd) => Command::handle_cd(remainder),
         _ => exec(command, &args),
     }
 }
