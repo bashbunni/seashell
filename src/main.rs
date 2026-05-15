@@ -57,6 +57,13 @@ impl Command {
             },
         }
     }
+
+    fn handle_pwd() {
+        match env::current_dir() {
+            Ok(pwd) => println!("{}", pwd.display()),
+            Err(e) => eprintln!("unexpected error: {e}"),
+        }
+    }
 }
 
 // evaluate commands
@@ -82,37 +89,22 @@ fn eval(input: &str) {
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", remainder),
-        Ok(Command::Pwd) => match env::current_dir() {
-            Ok(v) => println!("{}", v.display()),
-            Err(e) => eprintln!("unexpected error: {e}"),
-        },
+        Ok(Command::Pwd) => Command::handle_pwd(),
         Ok(Command::Type) => Command::handle_type(remainder),
-        _ => match find_executable(command) {
-            Some(exec_path) => {
-                if let Some(exec_name) = exec_path.file_name() {
-                    let mut exec_command = std::process::Command::new(exec_name);
-                    match exec_command.args(&args).spawn() {
-                        Ok(mut child) => {
-                            child.wait().ok();
-                        }
-                        Err(err) => eprintln!("unable to execute command: {err}"),
-                    }
-                }
-            }
-            None => println!("{}: command not found", input.trim()),
-        },
+        _ => exec(command, &args),
     }
 }
 
 // execute a command
-fn exec(input: &str, args: Option<&[&str]>) {
+fn exec(input: &str, args: &[&str]) {
     match find_executable(input) {
         Some(exec_path) => {
             if let Some(exec_name) = exec_path.file_name() {
                 let mut exec_command = std::process::Command::new(exec_name);
-                let result: Result<process::Child, io::Error> = match args {
-                    Some(a) => exec_command.args(a).spawn(),
-                    None => exec_command.spawn(),
+                let result: Result<process::Child, io::Error> = if args.is_empty() {
+                    exec_command.args(args).spawn()
+                } else {
+                    exec_command.spawn()
                 };
                 match result {
                     Ok(mut child) => {
