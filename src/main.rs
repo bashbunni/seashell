@@ -78,6 +78,7 @@ fn eval(input: &str) {
         return;
     }
 
+    // tidy inputs so I don't need to trim throughout.
     command = command.trim();
     remainder = remainder.trim();
 
@@ -95,22 +96,10 @@ fn eval(input: &str) {
                     .collect();
                 let mut exec_command = std::process::Command::new(exec_path);
                 match exec_command.args(&args).spawn() {
-                    Ok(_) => {
-                        println!(
-                            "Program was passed {} args (including program name).",
-                            args.len()
-                        );
-                        println!("Arg #0 (program name): {command}");
-
-                        for (count, a) in (1_i16..).zip(args.into_iter()) {
-                            println!("Arg #{count}: {a}");
-                        }
-                        println!(
-                            "Program Signature: {}",
-                            exec_command.get_program().display()
-                        )
+                    Ok(mut child) => {
+                        child.wait().ok();
                     }
-                    Err(err) => println!("unable to execute command: {err}"),
+                    Err(err) => eprintln!("unable to execute command: {err}"),
                 }
             }
             None => println!("{}: command not found", input.trim()),
