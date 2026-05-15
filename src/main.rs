@@ -82,14 +82,10 @@ fn eval(input: &str) {
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", remainder),
-        Ok(Command::Pwd) => {
-            let cmd = Command::Pwd.to_string();
-            if args.is_empty() {
-                exec(&cmd, None)
-            } else {
-                exec(&cmd, Some(&args))
-            }
-        }
+        Ok(Command::Pwd) => match env::current_dir() {
+            Ok(v) => println!("{}", v.display()),
+            Err(e) => eprintln!("unexpected error: {e}"),
+        },
         Ok(Command::Type) => Command::handle_type(remainder),
         _ => match find_executable(command) {
             Some(exec_path) => {
