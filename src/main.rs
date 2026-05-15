@@ -1,3 +1,4 @@
+use anyhow::Error;
 use is_executable::IsExecutable;
 use std::ffi::OsString;
 #[allow(unused_imports)]
@@ -6,7 +7,7 @@ use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process;
 use std::{env, str::FromStr};
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 
 // for type:
 // 1. check for builtin; use current handling for that
@@ -32,7 +33,7 @@ fn run() {
     eval(&input);
 }
 
-#[derive(EnumString)]
+#[derive(EnumString, Display)]
 enum Command {
     #[strum(serialize = "\n")]
     Enter,
@@ -42,6 +43,8 @@ enum Command {
     Echo,
     #[strum(serialize = "type")]
     Type,
+    #[strum(serialize = "pwd")]
+    Pwd,
 }
 
 impl Command {
@@ -54,16 +57,6 @@ impl Command {
             },
         }
     }
-}
-
-// returns executable path if one is found.
-fn find_executable(input: &str) -> Option<PathBuf> {
-    env::var_os("PATH").and_then(|path| {
-        env::split_paths(&path).find_map(|dir| {
-            let exec_path = dir.join(input);
-            exec_path.is_executable().then_some(exec_path)
-        })
-    })
 }
 
 // evaluate commands
@@ -79,17 +72,27 @@ fn eval(input: &str) {
     command = command.trim();
     remainder = remainder.trim();
 
+    // get args
+    let args: Vec<&str> = remainder
+        .split(" ")
+        .filter(|x| !x.is_empty())
+        .map(|x| x.trim())
+        .collect();
+
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", remainder),
+        Ok(Command::Pwd) => {
+            let cmd = Command::Pwd.to_string();
+            if args.is_empty() {
+                exec(&cmd, None)
+            } else {
+                exec(&cmd, Some(&args))
+            }
+        }
         Ok(Command::Type) => Command::handle_type(remainder),
         _ => match find_executable(command) {
             Some(exec_path) => {
-                let args: Vec<&str> = remainder
-                    .split(" ")
-                    .filter(|x| !x.is_empty())
-                    .map(|x| x.trim())
-                    .collect();
                 if let Some(exec_name) = exec_path.file_name() {
                     let mut exec_command = std::process::Command::new(exec_name);
                     match exec_command.args(&args).spawn() {
@@ -103,4 +106,36 @@ fn eval(input: &str) {
             None => println!("{}: command not found", input.trim()),
         },
     }
+}
+
+// execute a command
+fn exec(input: &str, args: Option<&[&str]>) {
+    match find_executable(input) {
+        Some(exec_path) => {
+            if let Some(exec_name) = exec_path.file_name() {
+                let mut exec_command = std::process::Command::new(exec_name);
+                let result: Result<process::Child, io::Error> = match args {
+                    Some(a) => exec_command.args(a).spawn(),
+                    None => exec_command.spawn(),
+                };
+                match result {
+                    Ok(mut child) => {
+                        child.wait().ok();
+                    }
+                    Err(err) => eprintln!("unable to execute command: {err}"),
+                }
+            }
+        }
+        None => println!("{}: command not found", input.trim()),
+    }
+}
+
+// returns executable path if one is found.
+fn find_executable(input: &str) -> Option<PathBuf> {
+    env::var_os("PATH").and_then(|path| {
+        env::split_paths(&path).find_map(|dir| {
+            let exec_path = dir.join(input);
+            exec_path.is_executable().then_some(exec_path)
+        })
+    })
 }
