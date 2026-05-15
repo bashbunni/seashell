@@ -88,9 +88,28 @@ fn eval(input: &str) {
         _ => match find_executable(command.trim()) {
             Some(exec_path) => {
                 println!("{}", exec_path.display());
-                let args: Vec<&str> = remainder.split(" ").map(|x| x.trim()).collect();
-                match std::process::Command::new(exec_path).args(args).spawn() {
-                    Ok(_) => println!("success!"),
+                let args: Vec<&str> = remainder
+                    .split(" ")
+                    .filter(|x| !x.is_empty())
+                    .map(|x| x.trim())
+                    .collect();
+                let mut exec_command = std::process::Command::new(exec_path);
+                match exec_command.args(&args).spawn() {
+                    Ok(_) => {
+                        println!(
+                            "Program was passed {} args (including program name).",
+                            args.len()
+                        );
+                        println!("Arg #0 (program name): {command}");
+
+                        for (count, a) in (1_i16..).zip(args.into_iter()) {
+                            println!("Arg #{count}: {a}");
+                        }
+                        println!(
+                            "Program Signature: {}",
+                            exec_command.get_program().display()
+                        )
+                    }
                     Err(err) => println!("unable to execute command: {err}"),
                 }
             }
