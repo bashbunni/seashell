@@ -65,9 +65,13 @@ impl Command {
     }
 
     fn handle_cd(input: &str) {
-        let path = Path::new(input);
+        let result = input.replace(
+            '~',
+            &format!("{}", env::home_dir().unwrap_or_default().display()),
+        );
+        let path = Path::new(&result);
         if path.is_dir() {
-            if env::set_current_dir(path).is_ok() {
+            if env::set_current_dir(result.clone()).is_ok() {
                 return;
             };
         }
