@@ -65,13 +65,9 @@ impl Command {
     }
 
     fn handle_cd(input: &str) {
-        let result = input.replace(
-            '~',
-            &format!("{}", env::home_dir().unwrap_or_default().display()),
-        );
-        let path = Path::new(&result);
+        let path = Path::new(&input);
         if path.is_dir() {
-            if env::set_current_dir(result.clone()).is_ok() {
+            if env::set_current_dir(input.clone()).is_ok() {
                 return;
             };
         }
@@ -92,8 +88,18 @@ fn eval(input: &str) {
     command = command.trim();
     remainder = remainder.trim();
 
+    // TODO check if remainder is inside single quotes
+    // is it going to be immediately single quoted?
+    // find a single quotes, then do something with the range
+    let sanitized_text = if quoted_text(&remainder).is_none() {
+        &replace_special_chars(&remainder)
+    } else {
+        remainder
+    };
+    // string::find -> get the first occurrence of the pattern
+
     // get args
-    let args: Vec<&str> = remainder
+    let args: Vec<&str> = sanitized_text
         .split(" ")
         .filter(|x| !x.is_empty())
         .map(|x| x.trim())
@@ -101,12 +107,29 @@ fn eval(input: &str) {
 
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => println!("{}", remainder),
-        Ok(Command::Type) => Command::handle_type(remainder),
+        Ok(Command::Echo) => println!("{}", sanitized_text),
+        Ok(Command::Type) => Command::handle_type(sanitized_text),
         Ok(Command::Pwd) => Command::handle_pwd(),
-        Ok(Command::Cd) => Command::handle_cd(remainder),
+        Ok(Command::Cd) => Command::handle_cd(sanitized_text),
         _ => exec(command, &args),
     }
+}
+
+fn quoted_text(input: &str) -> Option<&str> {
+    if let Some(i) = input.find("'")
+        && let Some(j) = input.rfind("'")
+    {
+        return Some(&input[i..j]);
+    }
+    None
+}
+
+fn replace_special_chars(input: &str) -> String {
+    // replace home
+    return input.replace(
+        '~',
+        &format!("{}", env::home_dir().unwrap_or_default().display()),
+    )
 }
 
 // execute a command
