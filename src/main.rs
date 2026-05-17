@@ -88,15 +88,8 @@ fn eval(input: &str) {
     command = command.trim();
     remainder = remainder.trim();
 
-    // TODO check if remainder is inside single quotes
-    // is it going to be immediately single quoted?
-    // find a single quotes, then do something with the range
-    let sanitized_text = if quoted_text(&remainder).is_none() {
-        &replace_special_chars(&remainder)
-    } else {
-        remainder
-    };
-    // string::find -> get the first occurrence of the pattern
+    // replace special chars if needed.
+    let sanitized_text = quoted_text(&remainder);
 
     // get args
     let args: Vec<&str> = sanitized_text
@@ -108,28 +101,50 @@ fn eval(input: &str) {
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", sanitized_text),
-        Ok(Command::Type) => Command::handle_type(sanitized_text),
+        Ok(Command::Type) => Command::handle_type(&sanitized_text),
         Ok(Command::Pwd) => Command::handle_pwd(),
-        Ok(Command::Cd) => Command::handle_cd(sanitized_text),
+        Ok(Command::Cd) => Command::handle_cd(&sanitized_text),
         _ => exec(command, &args),
     }
 }
 
-fn quoted_text(input: &str) -> Option<&str> {
-    if let Some(i) = input.find("'")
-        && let Some(j) = input.rfind("'")
-    {
-        return Some(&input[i..j]);
+fn quoted_text(input: &str) -> String {
+    // get all quote indices
+    let quote_idx: Vec<usize> = input.match_indices("'").map(|(i, _)| i).collect();
+
+    // add anything before the first single quote
+    if !quote_idx.is_empty() {
+        let mut hunks: Vec<String> = vec![];
+        if quote_idx[0] != 0 {
+            hunks.push(handle_special_chars(&input[..quote_idx[0]]));
+        }
+
+        // add anything in quotes
+        hunks.push(
+            quote_idx
+                .chunks_exact(2)
+                .map(|range| &input[range[0] + 1..range[1]])
+                .collect(),
+        );
+
+        // add anything after the last single quote
+        if quote_idx[quote_idx.len() - 1] != input.len() - 1 {
+            hunks.push(handle_special_chars(
+                &input[quote_idx[quote_idx.len() - 1] + 1..],
+            ));
+        }
+        hunks.join("")
+    } else {
+        handle_special_chars(input)
     }
-    None
 }
 
-fn replace_special_chars(input: &str) -> String {
+fn handle_special_chars(input: &str) -> String {
     // replace home
     return input.replace(
         '~',
         &format!("{}", env::home_dir().unwrap_or_default().display()),
-    )
+    );
 }
 
 // execute a command
