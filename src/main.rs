@@ -133,7 +133,12 @@ fn quoted_text(input: &str) -> String {
                 &input[quote_idx[quote_idx.len() - 1] + 1..],
             ));
         }
-        hunks.join("")
+
+        hunks
+            .iter()
+            .map(|hunk| hunk.trim())
+            .collect::<Vec<&str>>()
+            .join(" ")
     } else {
         handle_special_chars(input)
     }
