@@ -86,13 +86,17 @@ fn eval(input: &str) {
 
     // tidy inputs so I don't need to trim throughout.
     command = command.trim();
-    remainder = remainder.trim();
+    let tidied_whitespace = remainder
+        .split_whitespace()
+        .collect::<Vec<&str>>()
+        .join(" ");
+    remainder = &tidied_whitespace;
 
     // replace special chars if needed.
-    let sanitized_text = quoted_text(&remainder);
+    let with_special_chars = quoted_text(&remainder);
 
     // get args
-    let args: Vec<&str> = sanitized_text
+    let args: Vec<&str> = with_special_chars
         .split(" ")
         .filter(|x| !x.is_empty())
         .map(|x| x.trim())
@@ -100,10 +104,10 @@ fn eval(input: &str) {
 
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => println!("{}", sanitized_text),
-        Ok(Command::Type) => Command::handle_type(&sanitized_text),
+        Ok(Command::Echo) => println!("{}", with_special_chars),
+        Ok(Command::Type) => Command::handle_type(&with_special_chars),
         Ok(Command::Pwd) => Command::handle_pwd(),
-        Ok(Command::Cd) => Command::handle_cd(&sanitized_text),
+        Ok(Command::Cd) => Command::handle_cd(&with_special_chars),
         _ => exec(command, &args),
     }
 }
@@ -140,7 +144,7 @@ fn quoted_text(input: &str) -> String {
             .collect::<Vec<&str>>()
             .join(" ")
     } else {
-        handle_special_chars(input)
+        handle_special_chars(input.trim())
     }
 }
 
