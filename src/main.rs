@@ -111,9 +111,9 @@ fn quoted_text(input: &str) -> String {
     let mut output: String = String::new();
     for ch in input.chars() {
         // don't allow tabs, carriage returns, etc.
-        if ch.is_ascii_whitespace() && ch != ' ' {
-            continue;
-        }
+        //     if ch.is_ascii_whitespace() && ch != ' ' {
+        //         continue;
+        //     }
 
         if ch == '\'' {
             in_quote = !in_quote;
@@ -127,7 +127,7 @@ fn quoted_text(input: &str) -> String {
             output.push(ch);
         }
     }
-    output
+    output.trim().to_string()
 }
 
 fn handle_special_chars(ch: char) -> String {
