@@ -66,11 +66,9 @@ impl Command {
 
     fn handle_cd(input: &str) {
         let path = Path::new(&input);
-        if path.is_dir() {
-            if env::set_current_dir(input).is_ok() {
-                return;
-            };
-        }
+        if path.is_dir() && env::set_current_dir(input).is_ok() {
+            return;
+        };
         println!("cd: {}: No such file or directory", path.display());
     }
 }
@@ -93,7 +91,7 @@ fn eval(input: &str) {
     remainder = &tidied_whitespace;
 
     // replace special chars if needed.
-    let with_special_chars = quoted_text(&remainder);
+    let with_special_chars = quoted_text(remainder);
 
     // get args
     let args: Vec<&str> = with_special_chars
@@ -112,44 +110,31 @@ fn eval(input: &str) {
     }
 }
 
+// retain exact characters if within quotes.
 fn quoted_text(input: &str) -> String {
-    // get all quote indices
-    let quote_idx: Vec<usize> = input.match_indices("'").map(|(i, _)| i).collect();
-
-    // add anything before the first single quote
-    if !quote_idx.is_empty() {
-        let mut hunks: Vec<String> = vec![];
-        if quote_idx[0] != 0 {
-            hunks.push(handle_special_chars(&input[..quote_idx[0]]));
+    let mut in_quote: bool = false;
+    let mut output: String = String::new();
+    for ch in input.chars() {
+        if ch == '\'' {
+            in_quote = !in_quote;
+        } else if !in_quote {
+            // ignore multiple spaces.
+            if output.ends_with(" ") && ch == ' ' {
+                continue;
+            }
+            output.push_str(&handle_special_chars(ch));
+        } else {
+            output.push(ch);
         }
-
-        // add anything in quotes
-        hunks.push(
-            quote_idx
-                .chunks_exact(2)
-                .map(|range| &input[range[0] + 1..range[1]])
-                .collect(),
-        );
-
-        // add anything after the last single quote
-        if quote_idx[quote_idx.len() - 1] != input.len() - 1 {
-            hunks.push(handle_special_chars(
-                &input[quote_idx[quote_idx.len() - 1] + 1..],
-            ));
-        }
-
-        hunks.join(" ")
-    } else {
-        handle_special_chars(input.trim())
     }
+    output
 }
 
-fn handle_special_chars(input: &str) -> String {
-    // replace home
-    return input.replace(
-        '~',
-        &format!("{}", env::home_dir().unwrap_or_default().display()),
-    );
+fn handle_special_chars(ch: char) -> String {
+    match ch {
+        '~' => format!("{}", env::home_dir().unwrap_or_default().display()),
+        _ => ch.to_string(),
+    }
 }
 
 // execute a command
