@@ -110,6 +110,11 @@ fn quoted_text(input: &str) -> String {
     let mut in_quote: bool = false;
     let mut output: String = String::new();
     for ch in input.chars() {
+        // don't allow tabs, carriage returns, etc.
+        if ch.is_ascii_whitespace() && ch != ' ' {
+            continue;
+        }
+
         if ch == '\'' {
             in_quote = !in_quote;
         } else if !in_quote {
@@ -119,7 +124,6 @@ fn quoted_text(input: &str) -> String {
             }
             output.push_str(&handle_special_chars(ch));
         } else {
-            // TODO why are spaces not being preserved in this case?
             output.push(ch);
         }
     }
