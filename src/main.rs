@@ -84,11 +84,6 @@ fn eval(input: &str) {
 
     // tidy inputs so I don't need to trim throughout.
     command = command.trim();
-    let tidied_whitespace = remainder
-        .split_whitespace()
-        .collect::<Vec<&str>>()
-        .join(" ");
-    remainder = &tidied_whitespace;
 
     // replace special chars if needed.
     let with_special_chars = quoted_text(remainder);
@@ -124,6 +119,7 @@ fn quoted_text(input: &str) -> String {
             }
             output.push_str(&handle_special_chars(ch));
         } else {
+            // TODO why are spaces not being preserved in this case?
             output.push(ch);
         }
     }
