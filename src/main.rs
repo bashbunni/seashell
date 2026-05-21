@@ -105,10 +105,31 @@ fn eval(input: &str) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn quoted_retains_spaces() {
+        let result = quoted_text("\'hello       \' world");
+        assert_eq!(result, "hello        world");
+    }
+
+    #[test]
+    fn quoted_ignores_carriage_returns() {
+        let result = quoted_text("hello world\r");
+        assert_eq!(result, "hello world");
+
+        let result2 = quoted_text("hello \'world\r\'");
+        assert_eq!(result, "hello world");
+    }
+}
+
 // retain exact characters if within quotes.
 fn quoted_text(input: &str) -> String {
     let mut in_quote: bool = false;
     let mut output: String = String::new();
+    let mut prev_char: char = char::default();
     for ch in input.chars() {
         // don't allow tabs, carriage returns, etc.
         //     if ch.is_ascii_whitespace() && ch != ' ' {
@@ -119,13 +140,14 @@ fn quoted_text(input: &str) -> String {
             in_quote = !in_quote;
         } else if !in_quote {
             // ignore multiple spaces.
-            if output.ends_with(" ") && ch == ' ' {
+            if prev_char == ' ' && ch == ' ' {
                 continue;
             }
             output.push_str(&handle_special_chars(ch));
         } else {
             output.push(ch);
         }
+        prev_char = ch;
     }
     output.trim().to_string()
 }
