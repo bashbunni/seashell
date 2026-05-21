@@ -75,7 +75,7 @@ impl Command {
 
 // evaluate commands
 fn eval(input: &str) {
-    let (mut command, mut remainder) = input.split_once(" ").unwrap_or((input, ""));
+    let (mut command, remainder) = input.split_once(" ").unwrap_or((input, ""));
 
     // do nothing if they hit enter.
     if let Ok(Command::Enter) = Command::from_str(command) {
@@ -110,6 +110,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn basic_requirements() {
+        let result = quoted_text("'hello    world'");
+        assert_eq!(result, "hello    world");
+
+        let result2 = quoted_text("'hello''world'");
+        assert_eq!(result2, "helloworld");
+
+        let result3 = quoted_text("hello''world");
+        assert_eq!(result3, "helloworld");
+    }
+
+    #[test]
     fn quoted_retains_spaces() {
         let result = quoted_text("\'hello       \' world");
         assert_eq!(result, "hello        world");
@@ -121,7 +133,7 @@ mod tests {
         assert_eq!(result, "hello world");
 
         let result2 = quoted_text("hello \'world\r\'");
-        assert_eq!(result, "hello world");
+        assert_eq!(result2, "hello world");
     }
 }
 
