@@ -94,7 +94,7 @@ fn eval(input: &str) {
 
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => println!("{}", args.join(" ")),
+        Ok(Command::Echo) => println!("{}", args.join("")),
         Ok(Command::Type) => Command::handle_type(args),
         Ok(Command::Pwd) => Command::handle_pwd(),
         Ok(Command::Cd) => Command::handle_cd(args),
