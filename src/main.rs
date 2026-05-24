@@ -106,6 +106,11 @@ fn eval(input: &str) {
 // TODO add quote tests:
 // input: $ echo 'world     shell' 'example''hello' test''script
 // expect: world     shell examplehello testscript
+//
+// TODO add cat tests
+// input: $ cat '/tmp/owl/f   43' '/tmp/owl/f   72' '/tmp/owl/f   8'
+//
+//
 //mod tests {
 //    use super::*;
 //
@@ -191,6 +196,7 @@ fn exec(input: &str, args: Vec<String>) {
                 match result {
                     Ok(mut child) => {
                         child.wait().ok();
+                        println!();
                     }
                     Err(err) => eprintln!("unable to execute command: {err}"),
                 }
