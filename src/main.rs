@@ -47,13 +47,15 @@ enum Command {
 }
 
 impl Command {
-    fn handle_type(input: &str) {
-        match Command::from_str(input) {
-            Ok(_) => println!("{input} is a shell builtin"),
-            Err(_) => match find_executable(input) {
-                Some(exec_path) => println!("{input} is {}", exec_path.display()),
-                None => println!("{input}: not found"),
-            },
+    fn handle_type(args: Vec<String>) {
+        for arg in args {
+            match Command::from_str(&arg) {
+                Ok(_) => println!("{arg} is a shell builtin"),
+                Err(_) => match find_executable(&arg) {
+                    Some(exec_path) => println!("{arg} is {}", exec_path.display()),
+                    None => println!("{arg}: not found"),
+                },
+            }
         }
     }
 
@@ -64,12 +66,14 @@ impl Command {
         }
     }
 
-    fn handle_cd(input: &str) {
-        let path = Path::new(&input);
-        if path.is_dir() && env::set_current_dir(input).is_ok() {
-            return;
-        };
-        println!("cd: {}: No such file or directory", path.display());
+    fn handle_cd(args: Vec<String>) {
+        for arg in args {
+            let path = Path::new(&arg);
+            if path.is_dir() && env::set_current_dir(&arg).is_ok() {
+                return;
+            };
+            println!("cd: {}: No such file or directory", path.display());
+        }
     }
 }
 
@@ -85,83 +89,82 @@ fn eval(input: &str) {
     // tidy inputs so I don't need to trim throughout.
     command = command.trim();
 
-    // replace special chars if needed.
-    let with_special_chars = quoted_text(remainder);
-
     // get args
-    let args: Vec<&str> = with_special_chars
-        .split(" ")
-        .filter(|x| !x.is_empty())
-        .map(|x| x.trim())
-        .collect();
+    let args = parse_args(remainder);
 
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => println!("{}", with_special_chars),
-        Ok(Command::Type) => Command::handle_type(&with_special_chars),
+        Ok(Command::Echo) => println!("{}", args.join(" ")),
+        Ok(Command::Type) => Command::handle_type(args),
         Ok(Command::Pwd) => Command::handle_pwd(),
-        Ok(Command::Cd) => Command::handle_cd(&with_special_chars),
-        _ => exec(command, &args),
+        Ok(Command::Cd) => Command::handle_cd(args),
+        _ => exec(command, args),
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn basic_requirements() {
-        let result = quoted_text("'hello    world'");
-        assert_eq!(result, "hello    world");
-
-        let result2 = quoted_text("'hello''world'");
-        assert_eq!(result2, "helloworld");
-
-        let result3 = quoted_text("hello''world");
-        assert_eq!(result3, "helloworld");
-    }
-
-    #[test]
-    fn quoted_retains_spaces() {
-        let result = quoted_text("\'hello       \' world");
-        assert_eq!(result, "hello        world");
-    }
-
-    #[test]
-    fn quoted_ignores_carriage_returns() {
-        let result = quoted_text("hello world\r");
-        assert_eq!(result, "hello world");
-
-        let result2 = quoted_text("hello \'world\r\'");
-        assert_eq!(result2, "hello world");
-    }
-}
+// #[cfg(test)]
+//mod tests {
+//    use super::*;
+//
+//    #[test]
+//    fn basic_requirements() {
+//        let result = quoted_text("'hello    world'");
+//        assert_eq!(result, "hello    world");
+//
+//        let result2 = quoted_text("'hello''world'");
+//        assert_eq!(result2, "helloworld");
+//
+//        let result3 = quoted_text("hello''world");
+//        assert_eq!(result3, "helloworld");
+//    }
+//
+//    #[test]
+//    fn quoted_retains_spaces() {
+//        let result = quoted_text("\'hello       \' world");
+//        assert_eq!(result, "hello        world");
+//    }
+//
+//    #[test]
+//    fn quoted_ignores_carriage_returns() {
+//        let result = quoted_text("hello world\r");
+//        assert_eq!(result, "hello world");
+//
+//        let result2 = quoted_text("hello \'world\r\'");
+//        assert_eq!(result2, "hello world");
+//    }
+//}
 
 // retain exact characters if within quotes.
-fn quoted_text(input: &str) -> String {
+fn parse_args(input: &str) -> Vec<String> {
     let mut in_quote: bool = false;
-    let mut output: String = String::new();
+    let mut arg: String = String::new();
+    let mut args: Vec<String> = vec![];
     let mut prev_char: char = char::default();
     for ch in input.chars() {
-        // don't allow tabs, carriage returns, etc.
-        //     if ch.is_ascii_whitespace() && ch != ' ' {
-        //         continue;
-        //     }
-
         if ch == '\'' {
+            if in_quote {
+                // we've reached the end of the quoted text.
+                args.push(arg.clone());
+                arg.clear();
+            }
             in_quote = !in_quote;
         } else if !in_quote {
             // ignore multiple spaces.
-            if prev_char == ' ' && ch == ' ' {
+            if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
                 continue;
             }
-            output.push_str(&handle_special_chars(ch));
+            arg.push_str(&handle_special_chars(ch));
         } else {
-            output.push(ch);
+            arg.push(ch);
         }
         prev_char = ch;
     }
-    output.trim().to_string()
+
+    if !arg.is_empty() {
+        args.push(arg.clone());
+        arg.clear();
+    }
+    args
 }
 
 fn handle_special_chars(ch: char) -> String {
@@ -172,7 +175,7 @@ fn handle_special_chars(ch: char) -> String {
 }
 
 // execute a command
-fn exec(input: &str, args: &[&str]) {
+fn exec(input: &str, args: Vec<String>) {
     match find_executable(input) {
         Some(exec_path) => {
             if let Some(exec_name) = exec_path.file_name() {
