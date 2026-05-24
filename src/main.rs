@@ -145,7 +145,7 @@ fn parse_args(input: &str) -> Vec<String> {
     let mut prev_char: char = char::default();
     for ch in input.chars() {
         if ch == '\'' {
-            if in_quote {
+            if in_quote && !arg.is_empty() {
                 // we've reached the end of the quoted text.
                 args.push(arg.clone());
                 arg.clear();
