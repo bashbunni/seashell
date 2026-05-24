@@ -153,7 +153,7 @@ fn parse_args(input: &str) -> Vec<String> {
             in_quote = !in_quote;
         } else if !in_quote {
             // ignore multiple spaces.
-            if prev_char == ' ' && ch == ' ' {
+            if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
                 continue;
             }
             arg.push_str(&handle_special_chars(ch));
