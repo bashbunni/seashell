@@ -98,7 +98,12 @@ fn eval(input: &str) {
         Ok(Command::Type) => Command::handle_type(args),
         Ok(Command::Pwd) => Command::handle_pwd(),
         Ok(Command::Cd) => Command::handle_cd(args),
-        _ => exec(command, args),
+        _ => {
+            // this returns a different type than the other commands for testing
+            // purposes... TODO might update the others to do something similar
+            // as I get better with adding tests along the way.
+            exec(command, args);
+        }
     }
 }
 
@@ -142,7 +147,9 @@ fn eval(input: &str) {
 //    }
 //}
 
-// retain exact characters if within quotes.
+// retain exact characters if within quotes. all args are separated by spaces,
+// if there is no space, just quotes, they are still treated as the same
+// argument.
 fn parse_args(input: &str) -> Vec<String> {
     let mut in_quote: bool = false;
     let mut arg: String = String::new();
@@ -150,18 +157,23 @@ fn parse_args(input: &str) -> Vec<String> {
     let mut prev_char: char = char::default();
     for ch in input.chars() {
         if ch == '\'' {
-            if in_quote && !arg.is_empty() {
-                // we've reached the end of the quoted text.
-                args.push(arg.clone());
-                arg.clear();
-            }
+            // TODO check this. We should only split on spaces... but not within quotes
+            //            if in_quote && !arg.is_empty() {
+            //                // we've reached the end of the quoted text.
+            //                args.push(arg.clone());
+            //                arg.clear();
+            //            }
             in_quote = !in_quote;
         } else if !in_quote {
             // ignore multiple spaces.
             if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
                 continue;
+            } else if ch == ' ' {
+                // split on spaces, don't include them as args
+                args.push(arg.clone());
+            } else {
+                arg.push_str(&handle_special_chars(ch));
             }
-            arg.push_str(&handle_special_chars(ch));
         } else {
             arg.push(ch);
         }
@@ -183,26 +195,29 @@ fn handle_special_chars(ch: char) -> String {
 }
 
 // execute a command
-fn exec(input: &str, args: Vec<String>) {
+fn exec(input: &str, args: Vec<String>) -> Option<process::Output> {
     match find_executable(input) {
         Some(exec_path) => {
-            if let Some(exec_name) = exec_path.file_name() {
-                let mut exec_command = std::process::Command::new(exec_name);
-                let result: Result<process::Child, io::Error> = if args.is_empty() {
-                    exec_command.spawn()
-                } else {
-                    exec_command.args(args).spawn()
-                };
-                match result {
-                    Ok(mut child) => {
-                        child.wait().ok();
-                        println!();
-                    }
-                    Err(err) => eprintln!("unable to execute command: {err}"),
+            let mut exec_command = std::process::Command::new(exec_path);
+            let result = exec_command.args(args).output();
+            match result {
+                Ok(output) => {
+                    io::stdout().write_all(&output.stdout).ok();
+                    io::stdout().flush().ok();
+                    io::stderr().write_all(&output.stderr).ok();
+                    io::stderr().flush().ok();
+                    Some(output)
+                }
+                Err(err) => {
+                    eprintln!("unable to execute command: {err}");
+                    None
                 }
             }
         }
-        None => println!("{}: command not found", input.trim()),
+        None => {
+            println!("{}: command not found", input.trim());
+            None
+        }
     }
 }
 
@@ -214,4 +229,56 @@ fn find_executable(input: &str) -> Option<PathBuf> {
             exec_path.is_executable().then_some(exec_path)
         })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_cat_with_quoted_file_paths() {
+        let base_dir = Path::new("/tmp/ant");
+        fs::remove_dir_all(base_dir).ok();
+        fs::create_dir_all(base_dir).expect("unable to create test directory");
+
+        let first = base_dir.join("f   61");
+        let second = base_dir.join("f   95");
+        let third = base_dir.join("f   36");
+
+        fs::write(&first, "apple strawberry.").expect("unable to write first file");
+        fs::write(&second, "strawberry banana.").expect("unable to write second file");
+        fs::write(&third, "pineapple banana.\n").expect("unable to write third file");
+
+        let args = parse_args("'/tmp/ant/f   61' '/tmp/ant/f   95' '/tmp/ant/f   36'");
+        assert_eq!(
+            args,
+            vec![
+                "/tmp/ant/f   61".to_string(),
+                "/tmp/ant/f   95".to_string(),
+                "/tmp/ant/f   36".to_string()
+            ]
+        );
+
+        let output = exec("cat", args).expect("unable to execute cat");
+        let process::Output {
+            status,
+            stdout,
+            stderr,
+        } = output;
+        let stdout = String::from_utf8(stdout).expect("cat stdout should be valid utf-8");
+        let stderr = String::from_utf8(stderr).expect("cat stderr should be valid utf-8");
+
+        assert!(
+            status.success(),
+            "cat failed\nstdout: {stdout:?}\nstderr: {stderr:?}"
+        );
+        assert_eq!(
+            stdout.trim_end_matches('\n'),
+            "apple strawberry.strawberry banana.pineapple banana.",
+            "unexpected cat output\nstdout: {stdout:?}\nstderr: {stderr:?}"
+        );
+
+        fs::remove_dir_all(base_dir).ok();
+    }
 }
