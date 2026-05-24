@@ -103,6 +103,9 @@ fn eval(input: &str) {
 }
 
 // #[cfg(test)]
+// TODO add quote tests:
+// input: $ echo 'world     shell' 'example''hello' test''script
+// expect: world     shell examplehello testscript
 //mod tests {
 //    use super::*;
 //
@@ -150,7 +153,7 @@ fn parse_args(input: &str) -> Vec<String> {
             in_quote = !in_quote;
         } else if !in_quote {
             // ignore multiple spaces.
-            if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
+            if prev_char == ' ' && ch == ' ' {
                 continue;
             }
             arg.push_str(&handle_special_chars(ch));
