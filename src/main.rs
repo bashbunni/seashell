@@ -107,46 +107,6 @@ fn eval(input: &str) {
     }
 }
 
-// #[cfg(test)]
-// TODO add quote tests:
-// input: $ echo 'world     shell' 'example''hello' test''script
-// expect: world     shell examplehello testscript
-//
-// TODO add cat tests
-// input: $ cat '/tmp/owl/f   43' '/tmp/owl/f   72' '/tmp/owl/f   8'
-//
-//
-//mod tests {
-//    use super::*;
-//
-//    #[test]
-//    fn basic_requirements() {
-//        let result = quoted_text("'hello    world'");
-//        assert_eq!(result, "hello    world");
-//
-//        let result2 = quoted_text("'hello''world'");
-//        assert_eq!(result2, "helloworld");
-//
-//        let result3 = quoted_text("hello''world");
-//        assert_eq!(result3, "helloworld");
-//    }
-//
-//    #[test]
-//    fn quoted_retains_spaces() {
-//        let result = quoted_text("\'hello       \' world");
-//        assert_eq!(result, "hello        world");
-//    }
-//
-//    #[test]
-//    fn quoted_ignores_carriage_returns() {
-//        let result = quoted_text("hello world\r");
-//        assert_eq!(result, "hello world");
-//
-//        let result2 = quoted_text("hello \'world\r\'");
-//        assert_eq!(result2, "hello world");
-//    }
-//}
-
 // retain exact characters if within quotes. all args are separated by spaces,
 // if there is no space, just quotes, they are still treated as the same
 // argument.
@@ -171,6 +131,7 @@ fn parse_args(input: &str) -> Vec<String> {
             } else if ch == ' ' {
                 // split on spaces, don't include them as args
                 args.push(arg.clone());
+                arg.clear();
             } else {
                 arg.push_str(&handle_special_chars(ch));
             }
@@ -282,3 +243,43 @@ mod tests {
         fs::remove_dir_all(base_dir).ok();
     }
 }
+
+// #[cfg(test)]
+// TODO add quote tests:
+// input: $ echo 'world     shell' 'example''hello' test''script
+// expect: world     shell examplehello testscript
+//
+// TODO add cat tests
+// input: $ cat '/tmp/owl/f   43' '/tmp/owl/f   72' '/tmp/owl/f   8'
+//
+//
+//mod tests {
+//    use super::*;
+//
+//    #[test]
+//    fn basic_requirements() {
+//        let result = quoted_text("'hello    world'");
+//        assert_eq!(result, "hello    world");
+//
+//        let result2 = quoted_text("'hello''world'");
+//        assert_eq!(result2, "helloworld");
+//
+//        let result3 = quoted_text("hello''world");
+//        assert_eq!(result3, "helloworld");
+//    }
+//
+//    #[test]
+//    fn quoted_retains_spaces() {
+//        let result = quoted_text("\'hello       \' world");
+//        assert_eq!(result, "hello        world");
+//    }
+//
+//    #[test]
+//    fn quoted_ignores_carriage_returns() {
+//        let result = quoted_text("hello world\r");
+//        assert_eq!(result, "hello world");
+//
+//        let result2 = quoted_text("hello \'world\r\'");
+//        assert_eq!(result2, "hello world");
+//    }
+//}
