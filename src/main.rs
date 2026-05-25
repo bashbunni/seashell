@@ -129,7 +129,8 @@ fn parse_args(input: &str) -> Vec<String> {
             if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
                 continue;
             } else if ch == ' ' {
-                // split on spaces, don't include them as args
+                // split on spaces, don't include them as args, keep one though if there are multiple spaces, we need to keep a space between them to print
+                arg.push(ch);
                 args.push(arg.clone());
                 arg.clear();
             } else {
@@ -197,6 +198,14 @@ mod tests {
     use super::*;
     use std::fs;
 
+    // echo
+    #[test]
+    fn test_parse_spaces_no_quotes() {
+        let args = parse_args("world     shell");
+        assert_eq!(args, vec!["world", "shell"]);
+    }
+
+    // quotes
     #[test]
     fn test_cat_with_quoted_file_paths() {
         let base_dir = Path::new("/tmp/ant");
@@ -248,6 +257,8 @@ mod tests {
 // TODO add quote tests:
 // input: $ echo 'world     shell' 'example''hello' test''script
 // expect: world     shell examplehello testscript
+// input: $echo world     shell
+// expect: worldshell
 //
 // TODO add cat tests
 // input: $ cat '/tmp/owl/f   43' '/tmp/owl/f   72' '/tmp/owl/f   8'
