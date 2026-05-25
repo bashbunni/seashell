@@ -1,5 +1,4 @@
 use is_executable::IsExecutable;
-#[allow(unused_imports)]
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process;
@@ -73,23 +72,23 @@ impl Command {
 
 // evaluate commands
 fn eval(input: &str) {
-    let (mut command, remainder) = input.split_once(" ").unwrap_or((input, ""));
+    let (mut cmd, remainder) = input.split_once(" ").unwrap_or((input, ""));
     // do nothing if they hit enter.
-    if let Ok(Command::Enter) = Command::from_str(command) {
+    if let Ok(Command::Enter) = Command::from_str(cmd) {
         return;
     }
 
-    command = command.trim();
+    cmd = cmd.trim();
     let args = parse_args(remainder);
 
-    match Command::from_str(command) {
+    match Command::from_str(cmd) {
         Ok(Command::Exit) => std::process::exit(0),
         Ok(Command::Echo) => println!("{}", args.join(" ")),
         Ok(Command::Type) => Command::handle_type(args),
         Ok(Command::Pwd) => Command::handle_pwd(),
         Ok(Command::Cd) => Command::handle_cd(args),
         _ => {
-            exec(command, args);
+            exec(cmd, args);
         }
     }
 }
@@ -106,12 +105,10 @@ fn parse_args(input: &str) -> Vec<String> {
         if ch == '\'' {
             in_quote = !in_quote;
         } else if !in_quote {
-            // ignore multiple spaces.
-            if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
+            if is_ignored_whitespace(ch, prev_char) {
                 continue;
             } else if ch == ' ' {
-                args.push(arg.clone());
-                arg.clear();
+                push_arg(&mut args, &mut arg);
             } else {
                 arg.push_str(&handle_special_chars(ch));
             }
@@ -122,10 +119,22 @@ fn parse_args(input: &str) -> Vec<String> {
     }
 
     if !arg.is_empty() {
-        args.push(arg.clone());
-        arg.clear();
+        push_arg(&mut args, &mut arg);
     }
     args
+}
+
+fn is_ignored_whitespace(ch: char, prev_char: char) -> bool {
+    if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
+        return true;
+    }
+    false
+}
+
+// push and clear arg
+fn push_arg(args: &mut Vec<String>, arg: &mut String) {
+    args.push(arg.to_string());
+    arg.clear();
 }
 
 fn handle_special_chars(ch: char) -> String {
@@ -136,11 +145,11 @@ fn handle_special_chars(ch: char) -> String {
 }
 
 // execute a command
-fn exec(input: &str, args: Vec<String>) -> Option<process::Output> {
-    match find_executable(input) {
+fn exec(cmd: &str, args: Vec<String>) -> Option<process::Output> {
+    match find_executable(cmd) {
         Some(exec_path) => {
-            let mut exec_command = std::process::Command::new(exec_path.file_name().unwrap());
-            let result = exec_command.args(args).output();
+            let mut exec_cmd = std::process::Command::new(exec_path.file_name().unwrap());
+            let result = exec_cmd.args(args).output();
             match result {
                 Ok(output) => {
                     io::stdout().write_all(&output.stdout).ok();
@@ -156,7 +165,7 @@ fn exec(input: &str, args: Vec<String>) -> Option<process::Output> {
             }
         }
         None => {
-            println!("{}: command not found", input.trim());
+            println!("{}: command not found", cmd.trim());
             None
         }
     }
