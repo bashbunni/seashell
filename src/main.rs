@@ -6,12 +6,6 @@ use std::process;
 use std::{env, str::FromStr};
 use strum_macros::{Display, EnumString};
 
-// for type:
-// 1. check for builtin; use current handling for that
-// 2. look at all dirs in path, if ! exist command not found...
-//   a. check file name
-//   b. is executable? permissions. If not, skip
-
 fn main() {
     // eval loop
     loop {
@@ -80,16 +74,12 @@ impl Command {
 // evaluate commands
 fn eval(input: &str) {
     let (mut command, remainder) = input.split_once(" ").unwrap_or((input, ""));
-
     // do nothing if they hit enter.
     if let Ok(Command::Enter) = Command::from_str(command) {
         return;
     }
 
-    // tidy inputs so I don't need to trim throughout.
     command = command.trim();
-
-    // get args
     let args = parse_args(remainder);
 
     match Command::from_str(command) {
@@ -99,9 +89,6 @@ fn eval(input: &str) {
         Ok(Command::Pwd) => Command::handle_pwd(),
         Ok(Command::Cd) => Command::handle_cd(args),
         _ => {
-            // this returns a different type than the other commands for testing
-            // purposes... TODO might update the others to do something similar
-            // as I get better with adding tests along the way.
             exec(command, args);
         }
     }
@@ -117,19 +104,12 @@ fn parse_args(input: &str) -> Vec<String> {
     let mut prev_char: char = char::default();
     for ch in input.chars() {
         if ch == '\'' {
-            // TODO check this. We should only split on spaces... but not within quotes
-            //            if in_quote && !arg.is_empty() {
-            //                // we've reached the end of the quoted text.
-            //                args.push(arg.clone());
-            //                arg.clear();
-            //            }
             in_quote = !in_quote;
         } else if !in_quote {
             // ignore multiple spaces.
             if prev_char == ' ' && ch == ' ' || ch.is_ascii_whitespace() && ch != ' ' {
                 continue;
             } else if ch == ' ' {
-                // split on spaces, don't include them as args, keep one though if there are multiple spaces, we need to keep a space between them to print
                 args.push(arg.clone());
                 arg.clear();
             } else {
@@ -159,7 +139,6 @@ fn handle_special_chars(ch: char) -> String {
 fn exec(input: &str, args: Vec<String>) -> Option<process::Output> {
     match find_executable(input) {
         Some(exec_path) => {
-            // TODO make this not panic if no name found. Trying to see if this will pass a test.
             let mut exec_command = std::process::Command::new(exec_path.file_name().unwrap());
             let result = exec_command.args(args).output();
             match result {
@@ -259,17 +238,6 @@ mod tests {
     }
 }
 
-// #[cfg(test)]
-// TODO add quote tests:
-// input: $ echo 'world     shell' 'example''hello' test''script
-// expect: world     shell examplehello testscript
-// input: $echo world     shell
-// expect: worldshell
-//
-// TODO add cat tests
-// input: $ cat '/tmp/owl/f   43' '/tmp/owl/f   72' '/tmp/owl/f   8'
-//
-//
 //mod tests {
 //    use super::*;
 //
