@@ -94,7 +94,7 @@ fn eval(input: &str) {
 
     match Command::from_str(command) {
         Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => println!("{}", args.join("")),
+        Ok(Command::Echo) => println!("{}", args.join(" ")),
         Ok(Command::Type) => Command::handle_type(args),
         Ok(Command::Pwd) => Command::handle_pwd(),
         Ok(Command::Cd) => Command::handle_cd(args),
@@ -130,7 +130,6 @@ fn parse_args(input: &str) -> Vec<String> {
                 continue;
             } else if ch == ' ' {
                 // split on spaces, don't include them as args, keep one though if there are multiple spaces, we need to keep a space between them to print
-                arg.push(ch);
                 args.push(arg.clone());
                 arg.clear();
             } else {
@@ -203,6 +202,12 @@ mod tests {
     fn test_parse_spaces_no_quotes() {
         let args = parse_args("world     shell");
         assert_eq!(args, vec!["world", "shell"]);
+    }
+
+    #[test]
+    fn test_single_quotes() {
+        let args = parse_args("'test     example' 'world''shell' script''hello");
+        assert_eq!(args, vec!["test     example", "worldshell", "scripthello"]);
     }
 
     // quotes
