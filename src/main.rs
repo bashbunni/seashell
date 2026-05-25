@@ -163,10 +163,10 @@ fn exec(input: &str, args: Vec<String>) -> Option<process::Output> {
             let result = exec_command.args(args).output();
             match result {
                 Ok(output) => {
-                    io::stdout().write_all(&output.stdout).ok();
-                    io::stdout().flush().ok();
-                    io::stderr().write_all(&output.stderr).ok();
-                    io::stderr().flush().ok();
+                    //    io::stdout().write_all(&output.stdout).ok();
+                    //    io::stdout().flush().ok();
+                    //    io::stderr().write_all(&output.stderr).ok();
+                    //    io::stderr().flush().ok();
                     Some(output)
                 }
                 Err(err) => {
