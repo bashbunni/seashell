@@ -159,14 +159,15 @@ fn handle_special_chars(ch: char) -> String {
 fn exec(input: &str, args: Vec<String>) -> Option<process::Output> {
     match find_executable(input) {
         Some(exec_path) => {
-            let mut exec_command = std::process::Command::new(exec_path);
+            // TODO make this not panic if no name found. Trying to see if this will pass a test.
+            let mut exec_command = std::process::Command::new(exec_path.file_name().unwrap());
             let result = exec_command.args(args).output();
             match result {
                 Ok(output) => {
-                    //    io::stdout().write_all(&output.stdout).ok();
-                    //    io::stdout().flush().ok();
-                    //    io::stderr().write_all(&output.stderr).ok();
-                    //    io::stderr().flush().ok();
+                    io::stdout().write_all(&output.stdout).ok();
+                    io::stdout().flush().ok();
+                    io::stderr().write_all(&output.stderr).ok();
+                    io::stderr().flush().ok();
                     Some(output)
                 }
                 Err(err) => {
