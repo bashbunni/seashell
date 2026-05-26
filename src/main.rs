@@ -186,7 +186,26 @@ mod tests {
     use super::*;
     use std::fs;
 
-    // echo
+    // double quotes
+    #[test]
+    fn test_double_quotes() {
+        let result = parse_args("hello    world");
+        assert_eq!(result, vec!["hello    world"]);
+
+        let result = parse_args("\"hello\"\"world\"");
+        assert_eq!(result, vec!["helloworld"]);
+
+        let result = parse_args("\"hello\"world");
+        assert_eq!(result, vec!["helloworld"]);
+
+        let result = parse_args("\"hello\" \"world\"");
+        assert_eq!(result, vec!["hello", "world"]);
+
+        let result = parse_args("shell\'s test");
+        assert_eq!(result, vec!["shell\'s", "test"]);
+    }
+
+    // single quotes
     #[test]
     fn test_parse_spaces_no_quotes() {
         let args = parse_args("world     shell");
@@ -199,7 +218,6 @@ mod tests {
         assert_eq!(args, vec!["test     example", "worldshell", "scripthello"]);
     }
 
-    // quotes
     #[test]
     fn test_cat_with_quoted_file_paths() {
         let base_dir = Path::new("/tmp/ant");
