@@ -103,7 +103,14 @@ fn parse_args(input: &str) -> Vec<String> {
     let mut args: Vec<String> = vec![];
     let mut prev_char: char = char::default();
     for ch in input.chars() {
+        if prev_char == '\\' {
+            arg.push(ch);
+            prev_char = ch;
+            continue;
+        }
         match ch {
+            // don't write backslash, but preserve it as prev_char
+            '\\' => (),
             '\'' => {
                 if in_double_quote {
                     // treat quotes as literal inside existing quoted text.
@@ -218,6 +225,19 @@ fn find_executable(input: &str) -> Option<PathBuf> {
 mod tests {
     use super::*;
     use std::fs;
+
+    // backslashes
+    #[test]
+    fn test_backslash() {
+        let result = format!("{}", parse_args("multiple\\ \\ \\ \\ spaces").join(" "));
+        assert_eq!(result, "multiple    spaces");
+
+        let result = parse_args("hello \'hello\'");
+        assert_eq!(result, vec!["hello", "\'hello\'"]);
+
+        //        let result = format!("{}", parse_args("\'\"literal quotes\"\'").join(" "));
+        //        assert_eq!(result, "\'\"literal quotes\"\'");
+    }
 
     // double quotes
     #[test]
