@@ -105,29 +105,29 @@ fn parse_args(input: &str) -> Vec<String> {
     for ch in input.chars() {
         match ch {
             '\'' => {
-                in_single_quote = !in_single_quote;
-                //                if in_double_quote {
-                //                    arg.push(ch);
-                //                }
-            }
-            '\"' => {
-                in_double_quote = !in_double_quote;
-            }
-            _ => {
-                if !is_quoted(in_single_quote, in_double_quote) {
-                    if is_ignored_whitespace(ch, prev_char) {
-                        continue;
-                    } else if ch == ' ' {
-                        push_arg(&mut args, &mut arg);
-                    } else {
-                        arg.push_str(&handle_special_chars(ch));
-                    }
-                } else {
+                if in_double_quote {
                     arg.push(ch);
+                } else {
+                    // treat quotes as literal inside existing quoted text
+                    in_single_quote = !in_single_quote;
                 }
             }
+            '\"' => {
+                if in_single_quote {
+                    arg.push(ch);
+                } else {
+                    in_double_quote = !in_double_quote;
+                }
+            }
+            _ => match is_quoted(in_single_quote, in_double_quote) {
+                true => arg.push(ch), // if quoted, add as a literal character.
+                false => {
+                    if skip_character(&mut args, &mut arg, ch, prev_char) {
+                        continue;
+                    }
+                }
+            },
         }
-
         prev_char = ch;
     }
 
@@ -135,6 +135,22 @@ fn parse_args(input: &str) -> Vec<String> {
         push_arg(&mut args, &mut arg);
     }
     args
+}
+
+fn skip_character<'a>(
+    args: &mut Vec<String>,
+    arg: &'a mut String,
+    ch: char,
+    prev_char: char,
+) -> bool {
+    if is_ignored_whitespace(ch, prev_char) {
+        return true;
+    } else if ch == ' ' {
+        push_arg(args, arg);
+    } else {
+        arg.push_str(&handle_special_chars(ch));
+    }
+    false
 }
 
 fn is_quoted(in_single_quote: bool, in_double_quote: bool) -> bool {
@@ -221,8 +237,8 @@ mod tests {
         let result = parse_args("\"hello\" \"world\"");
         assert_eq!(result, vec!["hello", "world"]);
 
-        let result = parse_args("shell\'s test");
-        assert_eq!(result, vec!["shell\'s", "test"]);
+        let result = parse_args("\"shell\'s  test\"");
+        assert_eq!(result, vec!["shell\'s  test"]);
 
         let result = parse_args("\"hello \'world~\' yes     \"");
         assert_eq!(result, vec!["hello 'world~' yes     "]);
