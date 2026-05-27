@@ -10,6 +10,9 @@ supported by default to quit the application. You can also use ~ctrlc~ crate to 
 // current match restrictions: it's only on command.trim() that we're matching, not callable.
 
 I almost got caught going in circles for a solution trying to find the  "best" one, when it's easier to go from a specific point.
+* Lexical Analysis
+converting text into lexical tokens (in natural language: nouns, verbs, etc.) 
+This is probably overkill for now, but AST/lexical analysis may be worth looking at down the line.
 * TODOs
 ** look at ~unwrap_or_else~
 if let Some() vs unwrap
