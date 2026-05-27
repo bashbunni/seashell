@@ -110,7 +110,11 @@ fn parse_args(input: &str) -> Vec<String> {
         }
         match ch {
             // don't write backslash, but preserve it as prev_char
-            '\\' => (),
+            '\\' => {
+                if is_quoted(in_single_quote, in_double_quote) {
+                    arg.push(ch);
+                }
+            }
             '\'' => {
                 if in_double_quote {
                     // treat quotes as literal inside existing quoted text.
