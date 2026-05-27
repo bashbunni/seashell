@@ -93,52 +93,42 @@ fn eval(input: &str) {
     }
 }
 
+enum Mode {
+    SingleQuote,
+    DoubleQuote,
+    None,
+    Escape,
+}
+
 // retain exact characters if within quotes. all args are separated by spaces,
 // if there is no space, just quotes, they are still treated as the same
 // argument.
 fn parse_args(input: &str) -> Vec<String> {
-    let mut in_single_quote: bool = false;
-    let mut in_double_quote: bool = false;
+    let mut mode = Mode::None;
     let mut arg: String = String::new();
     let mut args: Vec<String> = vec![];
     let mut prev_char: char = char::default();
     for ch in input.chars() {
-        if prev_char == '\\' {
-            arg.push(ch);
-            prev_char = ch;
-            continue;
-        }
-        match ch {
-            // don't write backslash, but preserve it as prev_char
-            '\\' => {
-                if is_quoted(in_single_quote, in_double_quote) {
-                    arg.push(ch);
+        match (&mode, ch) {
+            (Mode::SingleQuote, '\'') => mode = Mode::None, // this is the end
+            (Mode::SingleQuote, _) => arg.push(ch),
+
+            (Mode::DoubleQuote, '\"') => mode = Mode::None,
+            (Mode::DoubleQuote, _) => arg.push(ch),
+
+            (Mode::None, '\'') => mode = Mode::SingleQuote,
+            (Mode::None, '\"') => mode = Mode::DoubleQuote,
+            (Mode::None, '\\') => mode = Mode::Escape,
+            (Mode::None, _) => {
+                if skip_char(&mut args, &mut arg, ch, prev_char) {
+                    continue;
                 }
             }
-            '\'' => {
-                if in_double_quote {
-                    // treat quotes as literal inside existing quoted text.
-                    arg.push(ch);
-                } else {
-                    // otherwise, toggle start and end of quotes.
-                    in_single_quote = !in_single_quote;
-                }
+            // add curr char without processing? then switch mode to none
+            (Mode::Escape, _) => {
+                arg.push(ch);
+                mode = Mode::None;
             }
-            '\"' => {
-                if in_single_quote {
-                    arg.push(ch);
-                } else {
-                    in_double_quote = !in_double_quote;
-                }
-            }
-            _ => match is_quoted(in_single_quote, in_double_quote) {
-                true => arg.push(ch), // if quoted, add as-is shown.
-                false => {
-                    if skip_char(&mut args, &mut arg, ch, prev_char) {
-                        continue;
-                    }
-                }
-            },
         }
         prev_char = ch;
     }
