@@ -97,24 +97,37 @@ fn eval(input: &str) {
 // if there is no space, just quotes, they are still treated as the same
 // argument.
 fn parse_args(input: &str) -> Vec<String> {
-    let mut in_quote: bool = false;
+    let mut in_single_quote: bool = false;
+    let mut in_double_quote: bool = false;
     let mut arg: String = String::new();
     let mut args: Vec<String> = vec![];
     let mut prev_char: char = char::default();
     for ch in input.chars() {
-        if ch == '\'' {
-            in_quote = !in_quote;
-        } else if !in_quote {
-            if is_ignored_whitespace(ch, prev_char) {
-                continue;
-            } else if ch == ' ' {
-                push_arg(&mut args, &mut arg);
-            } else {
-                arg.push_str(&handle_special_chars(ch));
+        match ch {
+            '\'' => {
+                in_single_quote = !in_single_quote;
+                //                if in_double_quote {
+                //                    arg.push(ch);
+                //                }
             }
-        } else {
-            arg.push(ch);
+            '\"' => {
+                in_double_quote = !in_double_quote;
+            }
+            _ => {
+                if !is_quoted(in_single_quote, in_double_quote) {
+                    if is_ignored_whitespace(ch, prev_char) {
+                        continue;
+                    } else if ch == ' ' {
+                        push_arg(&mut args, &mut arg);
+                    } else {
+                        arg.push_str(&handle_special_chars(ch));
+                    }
+                } else {
+                    arg.push(ch);
+                }
+            }
         }
+
         prev_char = ch;
     }
 
@@ -122,6 +135,13 @@ fn parse_args(input: &str) -> Vec<String> {
         push_arg(&mut args, &mut arg);
     }
     args
+}
+
+fn is_quoted(in_single_quote: bool, in_double_quote: bool) -> bool {
+    if in_single_quote || in_double_quote {
+        return true;
+    }
+    false
 }
 
 fn is_ignored_whitespace(ch: char, prev_char: char) -> bool {
@@ -189,7 +209,7 @@ mod tests {
     // double quotes
     #[test]
     fn test_double_quotes() {
-        let result = parse_args("hello    world");
+        let result = parse_args("\"hello    world\"");
         assert_eq!(result, vec!["hello    world"]);
 
         let result = parse_args("\"hello\"\"world\"");
@@ -203,6 +223,12 @@ mod tests {
 
         let result = parse_args("shell\'s test");
         assert_eq!(result, vec!["shell\'s", "test"]);
+
+        let result = parse_args("\"hello \'world~\' yes     \"");
+        assert_eq!(result, vec!["hello 'world~' yes     "]);
+
+        let result = parse_args("\"hello \'world~\' yes     \"");
+        assert_eq!(result, vec!["hello 'world~' yes     "]);
     }
 
     // single quotes
@@ -216,6 +242,9 @@ mod tests {
     fn test_single_quotes() {
         let args = parse_args("'test     example' 'world''shell' script''hello");
         assert_eq!(args, vec!["test     example", "worldshell", "scripthello"]);
+
+        let args = parse_args("\'hello    \"worlds \"   \'");
+        assert_eq!(args, vec!["hello    \"worlds \"   "]);
     }
 
     #[test]
