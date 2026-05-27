@@ -229,10 +229,10 @@ mod tests {
     // backslashes
     #[test]
     fn test_backslash() {
-        let result = format!("{}", parse_args("multiple\\ \\ \\ \\ spaces").join(" "));
+        let result = format!("{}", parse_args(r"multiple\ \ \ \ spaces").join(" "));
         assert_eq!(result, "multiple    spaces");
 
-        let result = parse_args("hello \'hello\'");
+        let result = parse_args(r"hello \'hello\'");
         assert_eq!(result, vec!["hello", "\'hello\'"]);
 
         //        let result = format!("{}", parse_args("\'\"literal quotes\"\'").join(" "));
