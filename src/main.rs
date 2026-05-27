@@ -106,9 +106,10 @@ fn parse_args(input: &str) -> Vec<String> {
         match ch {
             '\'' => {
                 if in_double_quote {
+                    // treat quotes as literal inside existing quoted text.
                     arg.push(ch);
                 } else {
-                    // treat quotes as literal inside existing quoted text
+                    // otherwise, toggle start and end of quotes.
                     in_single_quote = !in_single_quote;
                 }
             }
@@ -120,9 +121,9 @@ fn parse_args(input: &str) -> Vec<String> {
                 }
             }
             _ => match is_quoted(in_single_quote, in_double_quote) {
-                true => arg.push(ch), // if quoted, add as a literal character.
+                true => arg.push(ch), // if quoted, add as-is shown.
                 false => {
-                    if skip_character(&mut args, &mut arg, ch, prev_char) {
+                    if skip_char(&mut args, &mut arg, ch, prev_char) {
                         continue;
                     }
                 }
@@ -131,18 +132,14 @@ fn parse_args(input: &str) -> Vec<String> {
         prev_char = ch;
     }
 
+    // add final word, if it exists (args split on spaces otherwise).
     if !arg.is_empty() {
         push_arg(&mut args, &mut arg);
     }
     args
 }
 
-fn skip_character<'a>(
-    args: &mut Vec<String>,
-    arg: &'a mut String,
-    ch: char,
-    prev_char: char,
-) -> bool {
+fn skip_char(args: &mut Vec<String>, arg: &mut String, ch: char, prev_char: char) -> bool {
     if is_ignored_whitespace(ch, prev_char) {
         return true;
     } else if ch == ' ' {
