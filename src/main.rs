@@ -236,17 +236,17 @@ mod tests {
         assert_eq!(result, vec!["hello", "\'hello\'"]);
 
         // inside quotes
-        let result = parse_args(r#"'shell\\\nscript'"#);
-        assert_eq!(result, vec!["shell\\\nscript"]);
+        let result = parse_args(r"'shell\\\nscript'");
+        assert_eq!(result, vec![r"shell\\\nscript"]);
 
         let result = parse_args(r#"'example\"test'"#);
-        assert_eq!(result, vec!["example\"test"]);
+        assert_eq!(result, vec![r#"example\"test"#]);
 
         let result = parse_args(r#"'multiple\\slashes'"#);
-        assert_eq!(result, vec!["multiple\\slashes"]);
+        assert_eq!(result, vec![r"multiple\\slashes"]);
 
         let result = parse_args(r#"'every\"thing_is\"literal'"#);
-        assert_eq!(result, vec!["every\"thing_is\"literal"]);
+        assert_eq!(result, vec![r#"every\"thing_is\"literal"#]);
     }
 
     // double quotes
