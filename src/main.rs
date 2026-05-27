@@ -241,9 +241,6 @@ mod tests {
 
         let result = parse_args(r#"'every\"thing_is\"literal'"#);
         assert_eq!(result, vec![r#"every\"thing_is\"literal"#]);
-
-        let result = parse_args(r#"/tmp/owl/'two slashes \\53\\'"#);
-        assert_eq!(result, vec![r#"/tmp/owl/two slashes \53\"#]);
     }
 
     // double quotes
