@@ -109,75 +109,37 @@ enum Mode {
 // argument.
 fn parse_args(input: &str) -> Vec<String> {
     let mut mode = Mode::None;
-    let mut escape = false;
     let mut arg: String = String::new();
     let mut args: Vec<String> = vec![];
     let mut prev_char: char = char::default();
-    for ch in input.chars() {
+    let mut chars = input.chars().peekable(); // TODO does this need to be peekable to get next element in place?
+    while let Some(ch) = chars.next() {
         match (&mode, ch) {
             // only esc certain chars: ", \, $, `, newline ELSE it's literal
             (Mode::SingleQuote, '\'') => mode = Mode::None, // this is the end
             (Mode::SingleQuote, _) => arg.push(ch),
 
             // if we get double quote when mode is escaped, don't print the \ only the single quote
-            (Mode::DoubleQuote, '\"') => {
-                if escape {
-                    arg.push(handle_escape(ch, &mut escape))
-                } else {
-                    mode = Mode::None
-                }
-            }
+            (Mode::DoubleQuote, '\"') => mode = Mode::None,
             (Mode::DoubleQuote, '\\') => {
-                if escape {
-                    arg.push(handle_escape(ch, &mut escape))
-                } else {
-                    escape = !escape
+                // start escaping here AND handle the escaped char in this block.
+                // ignore current slash, then add next char
+                if let Some(next) = chars.next() {
+                    arg.push(next);
                 }
+            }
+            (Mode::DoubleQuote, _) => arg.push(ch),
 
-                // when we encounter a \ it's a) starting an escape seq b) is an escaped char
-
-                // we're in quotes, current char is a '\', next char will be escaped
-                // either switch to escape mode, handle it there, then somehow
-                // go back to in double quotes? You can attach prev state to the
-                // val of escape
-                // stack could be good
-                // peek next char, add that, move on
-            }
-            (Mode::DoubleQuote, _) => {
-                if escape {
-                    arg.push(handle_escape(ch, &mut escape))
-                } else {
-                    arg.push(ch)
-                }
-            }
-
-            (Mode::None, '\'') => {
-                if escape {
-                    arg.push(handle_escape(ch, &mut escape));
-                } else {
-                    mode = Mode::SingleQuote;
-                }
-            }
-            (Mode::None, '\"') => {
-                if escape {
-                    arg.push(handle_escape(ch, &mut escape));
-                } else {
-                    mode = Mode::DoubleQuote;
-                }
-            }
+            (Mode::None, '\'') => mode = Mode::SingleQuote,
+            (Mode::None, '\"') => mode = Mode::DoubleQuote,
             (Mode::None, '\\') => {
-                if escape {
-                    arg.push(handle_escape(ch, &mut escape));
-                } else {
-                    escape = !escape;
+                if let Some(next) = chars.next() {
+                    arg.push(next);
                 }
             }
             (Mode::None, _) => {
-                if escape {
-                    // handle the character literal
-                    arg.push(handle_escape(ch, &mut escape))
-                } else if skip_char(&mut args, &mut arg, ch, prev_char) {
-                    continue;
+                if skip_char(&mut args, &mut arg, ch, prev_char) {
+                    continue; // TODO this might not be needed.
                 }
             }
         }
@@ -189,14 +151,6 @@ fn parse_args(input: &str) -> Vec<String> {
         push_arg(&mut args, &mut arg);
     }
     args
-}
-
-fn handle_escape(ch: char, escape: &mut bool) -> char {
-    *escape = !*escape;
-    match ch {
-        //        '\\' | '\"' => ch,
-        _ => ch,
-    }
 }
 
 // TODO name this skip_or_handle_char
