@@ -151,8 +151,20 @@ fn parse_args(input: &str) -> Vec<String> {
                 }
             }
 
-            (Mode::None, '\'') => mode = Mode::SingleQuote,
-            (Mode::None, '\"') => mode = Mode::DoubleQuote,
+            (Mode::None, '\'') => {
+                if escape {
+                    arg.push(handle_escape(ch, &mut escape));
+                } else {
+                    mode = Mode::SingleQuote;
+                }
+            }
+            (Mode::None, '\"') => {
+                if escape {
+                    arg.push(handle_escape(ch, &mut escape));
+                } else {
+                    mode = Mode::DoubleQuote;
+                }
+            }
             (Mode::None, '\\') => escape = true,
             (Mode::None, _) => {
                 if escape {
