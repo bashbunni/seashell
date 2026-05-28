@@ -158,8 +158,7 @@ fn parse_args(input: &str) -> Vec<String> {
                 if escape {
                     // handle the character literal
                     arg.push(handle_escape(ch, &mut escape))
-                }
-                if skip_char(&mut args, &mut arg, ch, prev_char) {
+                } else if skip_char(&mut args, &mut arg, ch, prev_char) {
                     continue;
                 }
             }
@@ -182,6 +181,7 @@ fn handle_escape(ch: char, escape: &mut bool) -> char {
     }
 }
 
+// TODO name this skip_or_handle_char
 fn skip_char(args: &mut Vec<String>, arg: &mut String, ch: char, prev_char: char) -> bool {
     if is_ignored_whitespace(ch, prev_char) {
         return true;
@@ -271,7 +271,7 @@ mod tests {
         let result = format!("{}", parse_args(r#"multiple\ \ \ \ spaces"#).join(" "));
         assert_eq!(result, "multiple    spaces");
 
-        let result = parse_args(r"hello \'hello\'");
+        let result = parse_args(r"hello 'hello'");
         assert_eq!(result, vec!["hello", "\'hello\'"]);
 
         // inside quotes
