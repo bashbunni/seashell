@@ -165,7 +165,13 @@ fn parse_args(input: &str) -> Vec<String> {
                     mode = Mode::DoubleQuote;
                 }
             }
-            (Mode::None, '\\') => escape = true,
+            (Mode::None, '\\') => {
+                if escape {
+                    arg.push(handle_escape(ch, &mut escape));
+                } else {
+                    escape = !escape;
+                }
+            }
             (Mode::None, _) => {
                 if escape {
                     // handle the character literal
