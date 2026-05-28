@@ -97,37 +97,62 @@ enum Mode {
     SingleQuote,
     DoubleQuote,
     None,
-    Escape,
 }
+
+/*sanity notes
+ * it can be quoted, ALSO sometimes escaped.
+ * if it's escaped, we handle it differently depending on the mode.
+ * */
 
 // retain exact characters if within quotes. all args are separated by spaces,
 // if there is no space, just quotes, they are still treated as the same
 // argument.
 fn parse_args(input: &str) -> Vec<String> {
     let mut mode = Mode::None;
+    let mut escape = false;
     let mut arg: String = String::new();
     let mut args: Vec<String> = vec![];
     let mut prev_char: char = char::default();
     for ch in input.chars() {
         match (&mode, ch) {
+            // only esc certain chars: ", \, $, `, newline ELSE it's literal
             (Mode::SingleQuote, '\'') => mode = Mode::None, // this is the end
             (Mode::SingleQuote, _) => arg.push(ch),
 
+            // if we get double quote when mode is escaped, don't print the \ only the single quote
             (Mode::DoubleQuote, '\"') => mode = Mode::None,
-            (Mode::DoubleQuote, _) => arg.push(ch),
+            (Mode::DoubleQuote, '\\') => {
+                if escape {
+                    arg.push(ch);
+                }
+                escape = !escape
+                // we're in quotes, current char is a '\', next char will be escaped
+                // either switch to escape mode, handle it there, then somehow
+                // go back to in double quotes? You can attach prev state to the
+                // val of escape
+                // stack could be good
+                // peek next char, add that, move on
+            }
+            (Mode::DoubleQuote, _) => {
+                if escape {
+                    arg.push(handle_escape(ch))
+                } else {
+                    arg.push(ch)
+                }
+            }
 
             (Mode::None, '\'') => mode = Mode::SingleQuote,
             (Mode::None, '\"') => mode = Mode::DoubleQuote,
-            (Mode::None, '\\') => mode = Mode::Escape,
+            (Mode::None, '\\') => escape = true,
             (Mode::None, _) => {
+                if escape {
+                    // handle the character literal
+                    arg.push(ch);
+                    escape = !escape
+                }
                 if skip_char(&mut args, &mut arg, ch, prev_char) {
                     continue;
                 }
-            }
-            // add curr char without processing? then switch mode to none
-            (Mode::Escape, _) => {
-                arg.push(ch);
-                mode = Mode::None;
             }
         }
         prev_char = ch;
@@ -140,6 +165,13 @@ fn parse_args(input: &str) -> Vec<String> {
     args
 }
 
+fn handle_escape(ch: char) -> char {
+    match ch {
+        //        '\\' | '\"' => ch,
+        _ => ch,
+    }
+}
+
 fn skip_char(args: &mut Vec<String>, arg: &mut String, ch: char, prev_char: char) -> bool {
     if is_ignored_whitespace(ch, prev_char) {
         return true;
@@ -147,13 +179,6 @@ fn skip_char(args: &mut Vec<String>, arg: &mut String, ch: char, prev_char: char
         push_arg(args, arg);
     } else {
         arg.push_str(&handle_special_chars(ch));
-    }
-    false
-}
-
-fn is_quoted(in_single_quote: bool, in_double_quote: bool) -> bool {
-    if in_single_quote || in_double_quote {
-        return true;
     }
     false
 }
@@ -220,10 +245,20 @@ mod tests {
     use super::*;
     use std::fs;
 
+    // backslash in double quotes
+    #[test]
+    fn test_double_quote_escape() {
+        let result = parse_args(r#""just'one'\\n'backslash""#);
+        assert_eq!(result, vec![r#"just'one'\n'backslash"#]);
+
+        let result = parse_args(r#""inside\"literal_quote."outside\"""#);
+        assert_eq!(result, vec![r#"inside"literal_quote.outside"#]);
+    }
+
     // backslashes
     #[test]
     fn test_backslash() {
-        let result = format!("{}", parse_args(r"multiple\ \ \ \ spaces").join(" "));
+        let result = format!("{}", parse_args(r#"multiple\ \ \ \ spaces"#).join(" "));
         assert_eq!(result, "multiple    spaces");
 
         let result = parse_args(r"hello \'hello\'");
