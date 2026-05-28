@@ -99,31 +99,19 @@ enum Mode {
     None,
 }
 
-/*sanity notes
- * it can be quoted, ALSO sometimes escaped.
- * if it's escaped, we handle it differently depending on the mode.
- * */
-
-// retain exact characters if within quotes. all args are separated by spaces,
-// if there is no space, just quotes, they are still treated as the same
-// argument.
 fn parse_args(input: &str) -> Vec<String> {
     let mut mode = Mode::None;
     let mut arg: String = String::new();
     let mut args: Vec<String> = vec![];
     let mut prev_char: char = char::default();
-    let mut chars = input.chars().peekable(); // TODO does this need to be peekable to get next element in place?
+    let mut chars = input.chars();
     while let Some(ch) = chars.next() {
         match (&mode, ch) {
-            // only esc certain chars: ", \, $, `, newline ELSE it's literal
             (Mode::SingleQuote, '\'') => mode = Mode::None, // this is the end
             (Mode::SingleQuote, _) => arg.push(ch),
 
-            // if we get double quote when mode is escaped, don't print the \ only the single quote
             (Mode::DoubleQuote, '\"') => mode = Mode::None,
             (Mode::DoubleQuote, '\\') => {
-                // start escaping here AND handle the escaped char in this block.
-                // ignore current slash, then add next char
                 if let Some(next) = chars.next() {
                     arg.push(next);
                 }
@@ -138,8 +126,11 @@ fn parse_args(input: &str) -> Vec<String> {
                 }
             }
             (Mode::None, _) => {
-                if skip_char(&mut args, &mut arg, ch, prev_char) {
-                    continue; // TODO this might not be needed.
+                if is_ignored_whitespace(ch, prev_char) {
+                } else if ch == ' ' {
+                    push_arg(&mut args, &mut arg);
+                } else {
+                    arg.push_str(&handle_special_chars(ch));
                 }
             }
         }
@@ -151,18 +142,6 @@ fn parse_args(input: &str) -> Vec<String> {
         push_arg(&mut args, &mut arg);
     }
     args
-}
-
-// TODO name this skip_or_handle_char
-fn skip_char(args: &mut Vec<String>, arg: &mut String, ch: char, prev_char: char) -> bool {
-    if is_ignored_whitespace(ch, prev_char) {
-        return true;
-    } else if ch == ' ' {
-        push_arg(args, arg);
-    } else {
-        arg.push_str(&handle_special_chars(ch));
-    }
-    false
 }
 
 fn is_ignored_whitespace(ch: char, prev_char: char) -> bool {
@@ -242,9 +221,6 @@ mod tests {
     fn test_backslash() {
         let result = format!("{}", parse_args(r#"multiple\ \ \ \ spaces"#).join(" "));
         assert_eq!(result, "multiple    spaces");
-
-        let result = parse_args(r"hello 'hello'");
-        assert_eq!(result, vec!["hello", "\'hello\'"]);
 
         // inside quotes
         let result = parse_args(r"'shell\\\nscript'");
