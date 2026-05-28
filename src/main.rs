@@ -120,12 +120,22 @@ fn parse_args(input: &str) -> Vec<String> {
             (Mode::SingleQuote, _) => arg.push(ch),
 
             // if we get double quote when mode is escaped, don't print the \ only the single quote
-            (Mode::DoubleQuote, '\"') => mode = Mode::None,
+            (Mode::DoubleQuote, '\"') => {
+                if escape {
+                    arg.push(handle_escape(ch, &mut escape))
+                } else {
+                    mode = Mode::None
+                }
+            }
             (Mode::DoubleQuote, '\\') => {
                 if escape {
-                    arg.push(ch);
+                    arg.push(handle_escape(ch, &mut escape))
+                } else {
+                    escape = !escape
                 }
-                escape = !escape
+
+                // when we encounter a \ it's a) starting an escape seq b) is an escaped char
+
                 // we're in quotes, current char is a '\', next char will be escaped
                 // either switch to escape mode, handle it there, then somehow
                 // go back to in double quotes? You can attach prev state to the
@@ -135,7 +145,7 @@ fn parse_args(input: &str) -> Vec<String> {
             }
             (Mode::DoubleQuote, _) => {
                 if escape {
-                    arg.push(handle_escape(ch))
+                    arg.push(handle_escape(ch, &mut escape))
                 } else {
                     arg.push(ch)
                 }
@@ -147,8 +157,7 @@ fn parse_args(input: &str) -> Vec<String> {
             (Mode::None, _) => {
                 if escape {
                     // handle the character literal
-                    arg.push(ch);
-                    escape = !escape
+                    arg.push(handle_escape(ch, &mut escape))
                 }
                 if skip_char(&mut args, &mut arg, ch, prev_char) {
                     continue;
@@ -165,7 +174,8 @@ fn parse_args(input: &str) -> Vec<String> {
     args
 }
 
-fn handle_escape(ch: char) -> char {
+fn handle_escape(ch: char, escape: &mut bool) -> char {
+    *escape = !*escape;
     match ch {
         //        '\\' | '\"' => ch,
         _ => ch,
@@ -252,7 +262,7 @@ mod tests {
         assert_eq!(result, vec![r#"just'one'\n'backslash"#]);
 
         let result = parse_args(r#""inside\"literal_quote."outside\"""#);
-        assert_eq!(result, vec![r#"inside"literal_quote.outside"#]);
+        assert_eq!(result, vec![r#"inside"literal_quote.outside""#]);
     }
 
     // backslashes
