@@ -72,14 +72,22 @@ impl Command {
 
 // evaluate commands
 fn eval(input: &str) {
-    let (mut cmd, remainder) = input.split_once(" ").unwrap_or((input, ""));
+    let result = parse_quotes(input);
+    let cmd: &str;
+    let mut args = vec![];
+    if let Some(first_arg) = result.get(0) {
+        cmd = first_arg;
+        if result.len() > 1 {
+            args = result[1..].to_vec();
+        }
+    } else {
+        // no user input.
+        return;
+    }
     // do nothing if they hit enter.
     if let Ok(Command::Enter) = Command::from_str(cmd) {
         return;
     }
-
-    cmd = cmd.trim();
-    let args = parse_args(remainder);
 
     match Command::from_str(cmd) {
         Ok(Command::Exit) => std::process::exit(0),
@@ -99,7 +107,7 @@ enum Mode {
     None,
 }
 
-fn parse_args(input: &str) -> Vec<String> {
+fn parse_quotes(input: &str) -> Vec<String> {
     let mut mode = Mode::None;
     let mut arg: String = String::new();
     let mut args: Vec<String> = vec![];
@@ -209,71 +217,71 @@ mod tests {
     // backslash in double quotes
     #[test]
     fn test_double_quote_escape() {
-        let result = parse_args(r#""just'one'\\n'backslash""#);
+        let result = parse_quotes(r#""just'one'\\n'backslash""#);
         assert_eq!(result, vec![r#"just'one'\n'backslash"#]);
 
-        let result = parse_args(r#""inside\"literal_quote."outside\"""#);
+        let result = parse_quotes(r#""inside\"literal_quote."outside\"""#);
         assert_eq!(result, vec![r#"inside"literal_quote.outside""#]);
     }
 
     // backslashes
     #[test]
     fn test_backslash() {
-        let result = format!("{}", parse_args(r#"multiple\ \ \ \ spaces"#).join(" "));
+        let result = format!("{}", parse_quotes(r#"multiple\ \ \ \ spaces"#).join(" "));
         assert_eq!(result, "multiple    spaces");
 
         // inside quotes
-        let result = parse_args(r"'shell\\\nscript'");
+        let result = parse_quotes(r"'shell\\\nscript'");
         assert_eq!(result, vec![r"shell\\\nscript"]);
 
-        let result = parse_args(r#"'example\"test'"#);
+        let result = parse_quotes(r#"'example\"test'"#);
         assert_eq!(result, vec![r#"example\"test"#]);
 
-        let result = parse_args(r#"'multiple\\slashes'"#);
+        let result = parse_quotes(r#"'multiple\\slashes'"#);
         assert_eq!(result, vec![r"multiple\\slashes"]);
 
-        let result = parse_args(r#"'every\"thing_is\"literal'"#);
+        let result = parse_quotes(r#"'every\"thing_is\"literal'"#);
         assert_eq!(result, vec![r#"every\"thing_is\"literal"#]);
     }
 
     // double quotes
     #[test]
     fn test_double_quotes() {
-        let result = parse_args("\"hello    world\"");
+        let result = parse_quotes("\"hello    world\"");
         assert_eq!(result, vec!["hello    world"]);
 
-        let result = parse_args("\"hello\"\"world\"");
+        let result = parse_quotes("\"hello\"\"world\"");
         assert_eq!(result, vec!["helloworld"]);
 
-        let result = parse_args("\"hello\"world");
+        let result = parse_quotes("\"hello\"world");
         assert_eq!(result, vec!["helloworld"]);
 
-        let result = parse_args("\"hello\" \"world\"");
+        let result = parse_quotes("\"hello\" \"world\"");
         assert_eq!(result, vec!["hello", "world"]);
 
-        let result = parse_args("\"shell\'s  test\"");
+        let result = parse_quotes("\"shell\'s  test\"");
         assert_eq!(result, vec!["shell\'s  test"]);
 
-        let result = parse_args("\"hello \'world~\' yes     \"");
+        let result = parse_quotes("\"hello \'world~\' yes     \"");
         assert_eq!(result, vec!["hello 'world~' yes     "]);
 
-        let result = parse_args("\"hello \'world~\' yes     \"");
+        let result = parse_quotes("\"hello \'world~\' yes     \"");
         assert_eq!(result, vec!["hello 'world~' yes     "]);
     }
 
     // single quotes
     #[test]
     fn test_parse_spaces_no_quotes() {
-        let args = parse_args("world     shell");
+        let args = parse_quotes("world     shell");
         assert_eq!(args, vec!["world", "shell"]);
     }
 
     #[test]
     fn test_single_quotes() {
-        let args = parse_args("'test     example' 'world''shell' script''hello");
+        let args = parse_quotes("'test     example' 'world''shell' script''hello");
         assert_eq!(args, vec!["test     example", "worldshell", "scripthello"]);
 
-        let args = parse_args("\'hello    \"worlds \"   \'");
+        let args = parse_quotes("\'hello    \"worlds \"   \'");
         assert_eq!(args, vec!["hello    \"worlds \"   "]);
     }
 
@@ -291,7 +299,7 @@ mod tests {
         fs::write(&second, "strawberry banana.").expect("unable to write second file");
         fs::write(&third, "pineapple banana.\n").expect("unable to write third file");
 
-        let args = parse_args("'/tmp/ant/f   61' '/tmp/ant/f   95' '/tmp/ant/f   36'");
+        let args = parse_quotes("'/tmp/ant/f   61' '/tmp/ant/f   95' '/tmp/ant/f   36'");
         assert_eq!(
             args,
             vec![
