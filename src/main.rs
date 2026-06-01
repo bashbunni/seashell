@@ -1,5 +1,6 @@
 use is_executable::IsExecutable;
-use std::io::{self, Write};
+use std::fs::File;
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::{env, str::FromStr};
@@ -28,32 +29,60 @@ fn run() {
 // evaluate commands
 fn eval(input: &str) {
     let result = parse_quotes(input);
-    let cmd: &str;
-    let mut args = vec![];
-    if let Some(first_arg) = result.get(0) {
-        cmd = first_arg;
-        if result.len() > 1 {
-            args = result[1..].to_vec();
-        }
-    } else {
-        // no user input.
+    let (cmd, args) = tokenize_input(result);
+    // do nothing if they only hit enter.
+    if let Ok(Command::Enter) = Command::from_str(&cmd) {
         return;
     }
-    // do nothing if they hit enter.
-    if let Ok(Command::Enter) = Command::from_str(cmd) {
+    if cmd == "" {
+        // TODO eventually return a messsage stating the command is empty. (Not
+        // sure if this will affect CodeCrafters tests)
         return;
     }
 
-    match Command::from_str(cmd) {
+    // send all outputs to stdout so we can redirect them to a file as needed.
+    let mut buf: BufWriter<Box<dyn Write>>;
+    if let Some(out_path) = redirect_path(&args) {
+        let file = File::create(&out_path)
+            .unwrap_or_else(|err| panic!("unable to open file {out_path} for writing: {err}"));
+        buf = BufWriter::new(Box::new(file));
+    } else {
+        buf = BufWriter::new(Box::new(io::stdout()));
+    }
+
+    match Command::from_str(&cmd) {
         Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => println!("{}", args.join(" ")),
-        Ok(Command::Type) => Command::handle_type(args),
-        Ok(Command::Pwd) => Command::handle_pwd(),
-        Ok(Command::Cd) => Command::handle_cd(args),
+        Ok(Command::Echo) => writeln!(buf, "{}", args.join(" ")).unwrap(),
+        Ok(Command::Type) => Command::handle_type(&mut buf, args),
+        Ok(Command::Pwd) => Command::handle_pwd(&mut buf),
+        Ok(Command::Cd) => Command::handle_cd(&mut buf, args),
         _ => {
-            exec(cmd, args);
+            exec(&cmd, args);
         }
     }
+}
+
+// return redirect output path
+fn redirect_path(input: &Vec<String>) -> Option<String> {
+    if let Some(index) = input
+        .iter()
+        .position(|x| **x == String::from(">") || **x == String::from("1>"))
+    {
+        return input.get(index + 1).cloned();
+    }
+    None
+}
+
+// get command and args
+fn tokenize_input(input: Vec<String>) -> (String, Vec<String>) {
+    let (mut cmd, mut args) = (String::new(), vec![]);
+    if let Some(first_arg) = input.get(0) {
+        cmd = first_arg.to_string();
+        if input.len() > 1 {
+            args = input[1..].to_vec();
+        }
+    }
+    return (cmd, args);
 }
 
 // execute a command
@@ -110,32 +139,32 @@ enum Command {
 }
 
 impl Command {
-    fn handle_type(args: Vec<String>) {
+    fn handle_type(buf: &mut BufWriter<Box<dyn Write>>, args: Vec<String>) {
         for arg in args {
             match Command::from_str(&arg) {
-                Ok(_) => println!("{arg} is a shell builtin"),
+                Ok(_) => writeln!(buf, "{arg} is a shell builtin").unwrap(),
                 Err(_) => match find_executable(&arg) {
-                    Some(exec_path) => println!("{arg} is {}", exec_path.display()),
-                    None => println!("{arg}: not found"),
+                    Some(exec_path) => writeln!(buf, "{arg} is {}", exec_path.display()).unwrap(),
+                    None => writeln!(buf, "{arg}: not found").unwrap(),
                 },
             }
         }
     }
 
-    fn handle_pwd() {
+    fn handle_pwd(buf: &mut BufWriter<Box<dyn Write>>) {
         match env::current_dir() {
-            Ok(pwd) => println!("{}", pwd.display()),
+            Ok(pwd) => writeln!(buf, "{}", pwd.display()).unwrap(),
             Err(e) => eprintln!("unexpected error: {e}"),
         }
     }
 
-    fn handle_cd(args: Vec<String>) {
+    fn handle_cd(buf: &mut BufWriter<Box<dyn Write>>, args: Vec<String>) {
         for arg in args {
             let path = Path::new(&arg);
             if path.is_dir() && env::set_current_dir(&arg).is_ok() {
                 return;
             };
-            println!("cd: {}: No such file or directory", path.display());
+            writeln!(buf, "cd: {}: No such file or directory", path.display()).unwrap();
         }
     }
 }
@@ -173,6 +202,12 @@ fn parse_quotes(input: &str) -> Vec<String> {
                 if let Some(next) = chars.next() {
                     arg.push(next);
                 }
+            }
+            (Mode::None, '>') => {
+                // always set redirect command as its own arg, splitting existing arg if needed.
+                // e.g. echo hello>world
+                push_arg(&mut args, &mut arg);
+                push_arg(&mut args, &mut String::from(">"))
             }
             (Mode::None, _) => {
                 if is_ignored_whitespace(ch, prev_char) {
