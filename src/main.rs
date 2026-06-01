@@ -23,6 +23,76 @@ fn run() {
     eval(&input);
 }
 
+/* commands */
+
+// evaluate commands
+fn eval(input: &str) {
+    let result = parse_quotes(input);
+    let cmd: &str;
+    let mut args = vec![];
+    if let Some(first_arg) = result.get(0) {
+        cmd = first_arg;
+        if result.len() > 1 {
+            args = result[1..].to_vec();
+        }
+    } else {
+        // no user input.
+        return;
+    }
+    // do nothing if they hit enter.
+    if let Ok(Command::Enter) = Command::from_str(cmd) {
+        return;
+    }
+
+    match Command::from_str(cmd) {
+        Ok(Command::Exit) => std::process::exit(0),
+        Ok(Command::Echo) => println!("{}", args.join(" ")),
+        Ok(Command::Type) => Command::handle_type(args),
+        Ok(Command::Pwd) => Command::handle_pwd(),
+        Ok(Command::Cd) => Command::handle_cd(args),
+        _ => {
+            exec(cmd, args);
+        }
+    }
+}
+
+// execute a command
+fn exec(cmd: &str, args: Vec<String>) -> Option<process::Output> {
+    match find_executable(cmd) {
+        Some(exec_path) => {
+            let mut exec_cmd = std::process::Command::new(exec_path.file_name().unwrap());
+            let result = exec_cmd.args(args).output();
+            match result {
+                Ok(output) => {
+                    io::stdout().write_all(&output.stdout).ok();
+                    io::stdout().flush().ok();
+                    io::stderr().write_all(&output.stderr).ok();
+                    io::stderr().flush().ok();
+                    Some(output)
+                }
+                Err(err) => {
+                    eprintln!("unable to execute command: {err}");
+                    None
+                }
+            }
+        }
+        None => {
+            println!("{}: command not found", cmd.trim());
+            None
+        }
+    }
+}
+
+// return executable path if one is found.
+fn find_executable(input: &str) -> Option<PathBuf> {
+    env::var_os("PATH").and_then(|path| {
+        env::split_paths(&path).find_map(|dir| {
+            let exec_path = dir.join(input);
+            exec_path.is_executable().then_some(exec_path)
+        })
+    })
+}
+
 #[derive(EnumString, Display)]
 enum Command {
     #[strum(serialize = "\n")]
@@ -70,36 +140,7 @@ impl Command {
     }
 }
 
-// evaluate commands
-fn eval(input: &str) {
-    let result = parse_quotes(input);
-    let cmd: &str;
-    let mut args = vec![];
-    if let Some(first_arg) = result.get(0) {
-        cmd = first_arg;
-        if result.len() > 1 {
-            args = result[1..].to_vec();
-        }
-    } else {
-        // no user input.
-        return;
-    }
-    // do nothing if they hit enter.
-    if let Ok(Command::Enter) = Command::from_str(cmd) {
-        return;
-    }
-
-    match Command::from_str(cmd) {
-        Ok(Command::Exit) => std::process::exit(0),
-        Ok(Command::Echo) => println!("{}", args.join(" ")),
-        Ok(Command::Type) => Command::handle_type(args),
-        Ok(Command::Pwd) => Command::handle_pwd(),
-        Ok(Command::Cd) => Command::handle_cd(args),
-        _ => {
-            exec(cmd, args);
-        }
-    }
-}
+/* parsing */
 
 enum Mode {
     SingleQuote,
@@ -172,42 +213,7 @@ fn handle_special_chars(ch: char) -> String {
     }
 }
 
-// execute a command
-fn exec(cmd: &str, args: Vec<String>) -> Option<process::Output> {
-    match find_executable(cmd) {
-        Some(exec_path) => {
-            let mut exec_cmd = std::process::Command::new(exec_path.file_name().unwrap());
-            let result = exec_cmd.args(args).output();
-            match result {
-                Ok(output) => {
-                    io::stdout().write_all(&output.stdout).ok();
-                    io::stdout().flush().ok();
-                    io::stderr().write_all(&output.stderr).ok();
-                    io::stderr().flush().ok();
-                    Some(output)
-                }
-                Err(err) => {
-                    eprintln!("unable to execute command: {err}");
-                    None
-                }
-            }
-        }
-        None => {
-            println!("{}: command not found", cmd.trim());
-            None
-        }
-    }
-}
-
-// return executable path if one is found.
-fn find_executable(input: &str) -> Option<PathBuf> {
-    env::var_os("PATH").and_then(|path| {
-        env::split_paths(&path).find_map(|dir| {
-            let exec_path = dir.join(input);
-            exec_path.is_executable().then_some(exec_path)
-        })
-    })
-}
+/* tests */
 
 #[cfg(test)]
 mod tests {
@@ -330,35 +336,31 @@ mod tests {
 
         fs::remove_dir_all(base_dir).ok();
     }
-}
 
-//mod tests {
-//    use super::*;
-//
-//    #[test]
-//    fn basic_requirements() {
-//        let result = quoted_text("'hello    world'");
-//        assert_eq!(result, "hello    world");
-//
-//        let result2 = quoted_text("'hello''world'");
-//        assert_eq!(result2, "helloworld");
-//
-//        let result3 = quoted_text("hello''world");
-//        assert_eq!(result3, "helloworld");
-//    }
-//
-//    #[test]
-//    fn quoted_retains_spaces() {
-//        let result = quoted_text("\'hello       \' world");
-//        assert_eq!(result, "hello        world");
-//    }
-//
-//    #[test]
-//    fn quoted_ignores_carriage_returns() {
-//        let result = quoted_text("hello world\r");
-//        assert_eq!(result, "hello world");
-//
-//        let result2 = quoted_text("hello \'world\r\'");
-//        assert_eq!(result2, "hello world");
-//    }
-//}
+    #[test]
+    fn basic_requirements() {
+        let result = parse_quotes("'hello    world'");
+        assert_eq!(result, vec!["hello    world"]);
+
+        let result2 = parse_quotes("'hello''world'");
+        assert_eq!(result2, vec!["helloworld"]);
+
+        let result3 = parse_quotes("hello''world");
+        assert_eq!(result3, vec!["helloworld"]);
+    }
+
+    #[test]
+    fn quoted_retains_spaces() {
+        let result = parse_quotes("\'hello       \' world");
+        assert_eq!(result, vec!["hello        world"]);
+    }
+
+    #[test]
+    fn quoted_ignores_carriage_returns() {
+        let result = parse_quotes("hello world\r");
+        assert_eq!(result, vec!["hello world"]);
+
+        let result2 = parse_quotes("hello \'world\r\'");
+        assert_eq!(result2, vec!["hello world"]);
+    }
+}
