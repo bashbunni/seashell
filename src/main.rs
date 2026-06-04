@@ -36,7 +36,7 @@ fn eval(input: &str) {
         return;
     }
     println!("{args:?}");
-    if cmd == "" {
+    if cmd.is_empty() {
         // TODO eventually return a messsage stating the command is empty. (Not
         // sure if this will affect CodeCrafters tests)
         return;
@@ -70,8 +70,7 @@ fn eval(input: &str) {
 fn redirect_path(input: &mut Vec<String>) -> Option<String> {
     if let Some(index) = input
         .iter()
-        .position(|x| **x == String::from(">") || **x == String::from("1>"))
-        .clone()
+        .position(|x| **x.as_str() == String::from(">") || **x == String::from("1>"))
     {
         let out_path = input.get(index + 1).cloned();
         input.remove(index + 1); // rm the file name
@@ -82,9 +81,9 @@ fn redirect_path(input: &mut Vec<String>) -> Option<String> {
 }
 
 // get command and args
-fn tokenize_input(input: &Vec<String>) -> (String, Vec<String>) {
+fn tokenize_input(input: &[String]) -> (String, Vec<String>) {
     let (mut cmd, mut args) = (String::new(), vec![]);
-    if let Some(first_arg) = input.get(0) {
+    if let Some(first_arg) = input.first() {
         cmd = first_arg.to_string();
         if input.len() > 1 {
             args = input[1..]
@@ -99,7 +98,7 @@ fn tokenize_input(input: &Vec<String>) -> (String, Vec<String>) {
                 .collect();
         }
     }
-    return (cmd, args);
+    (cmd, args)
 }
 
 // execute a command
