@@ -223,8 +223,17 @@ fn parse_quotes(input: &str) -> Vec<String> {
             (Mode::None, '>') => {
                 // always set redirect command as its own arg, splitting existing arg if needed.
                 // e.g. echo hello>world
-                push_arg(&mut args, &mut arg);
-                push_arg(&mut args, &mut String::from(">"))
+                // TODO check if prev char is 1, if so remove it from arg before push_arg
+                let last_arg = arg.chars().last().unwrap();
+                if last_arg == '1' {
+                    arg.remove(arg.len() - 1);
+                    if arg != "" {
+                        push_arg(&mut args, &mut arg);
+                    }
+                    push_arg(&mut args, &mut String::from("1>"))
+                } else {
+                    push_arg(&mut args, &mut String::from(">"))
+                }
             }
             (Mode::None, _) => {
                 if is_ignored_whitespace(ch, prev_char) {
