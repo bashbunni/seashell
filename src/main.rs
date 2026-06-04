@@ -29,13 +29,11 @@ fn run() {
 // evaluate commands
 fn eval(input: &str) {
     let result = parse_quotes(input);
-    println!("{result:?}");
     let (cmd, mut args) = tokenize_input(&result);
     // do nothing if they only hit enter.
     if let Ok(Command::Enter) = Command::from_str(&cmd) {
         return;
     }
-    println!("{args:?}");
     if cmd.is_empty() {
         // TODO eventually return a messsage stating the command is empty. (Not
         // sure if this will affect CodeCrafters tests)
@@ -44,9 +42,7 @@ fn eval(input: &str) {
 
     // send all outputs to stdout so we can redirect them to a file as needed.
     let mut buf: BufWriter<Box<dyn Write>>;
-    println!("{args:?}");
     if let Some(out_path) = redirect_path(&mut args) {
-        println!("out_path => {out_path}");
         let file = File::create(&out_path)
             .unwrap_or_else(|err| panic!("unable to open file {out_path} for writing: {err}"));
         buf = BufWriter::new(Box::new(file));
@@ -122,7 +118,7 @@ fn exec(cmd: &str, args: Vec<String>) -> Option<process::Output> {
             }
         }
         None => {
-            println!("{}: command not found", cmd.trim());
+            eprintln!("{}: command not found", cmd.trim());
             None
         }
     }
