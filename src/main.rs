@@ -1,6 +1,6 @@
 use is_executable::IsExecutable;
 use std::fs::File;
-use std::io::{self, BufWriter, Write};
+use std::io::{self, stderr, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::{env, str::FromStr};
@@ -113,6 +113,8 @@ fn exec(
                 Ok(output) => {
                     buf.write_all(&output.stdout).ok();
                     buf.flush().ok();
+                    stderr().write_all(&output.stderr).ok();
+                    stderr().flush().ok();
                     Some(output)
                 }
                 Err(err) => {
