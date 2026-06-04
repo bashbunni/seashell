@@ -57,7 +57,7 @@ fn eval(input: &str) {
         Ok(Command::Pwd) => Command::handle_pwd(&mut buf),
         Ok(Command::Cd) => Command::handle_cd(&mut buf, args),
         _ => {
-            exec(&cmd, args);
+            exec(&mut buf, &cmd, args);
         }
     }
 }
@@ -98,17 +98,21 @@ fn tokenize_input(input: &[String]) -> (String, Vec<String>) {
 }
 
 // execute a command
-fn exec(cmd: &str, args: Vec<String>) -> Option<process::Output> {
+fn exec(
+    buf: &mut BufWriter<Box<dyn Write>>,
+    cmd: &str,
+    args: Vec<String>,
+) -> Option<process::Output> {
     match find_executable(cmd) {
         Some(exec_path) => {
             let mut exec_cmd = std::process::Command::new(exec_path.file_name().unwrap());
             let result = exec_cmd.args(args).output();
             match result {
+                // TODO this is causing me PAIN
+                // e.g. ls -1 <path> > my_file doesn't print to the correct writer
                 Ok(output) => {
-                    io::stdout().write_all(&output.stdout).ok();
-                    io::stdout().flush().ok();
-                    io::stderr().write_all(&output.stderr).ok();
-                    io::stderr().flush().ok();
+                    buf.write_all(&output.stdout).ok();
+                    buf.flush().ok();
                     Some(output)
                 }
                 Err(err) => {
@@ -372,7 +376,9 @@ mod tests {
             ]
         );
 
-        let output = exec("cat", args).expect("unable to execute cat");
+        // TODO fix this test
+        let mut buf: BufWriter<Box<dyn Write>> = BufWriter::new(Box::new(io::stdout()));
+        let output = exec(&mut buf, "cat", args).expect("unable to execute cat");
         let process::Output {
             status,
             stdout,
