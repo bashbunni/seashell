@@ -70,7 +70,7 @@ fn eval(input: &str) {
 fn redirect_path(input: &mut Vec<String>) -> Option<String> {
     if let Some(index) = input
         .iter()
-        .position(|x| **x.as_str() == String::from(">") || **x == String::from("1>"))
+        .position(|x| **x == String::from(">") || **x == String::from("1>"))
     {
         let out_path = input.get(index + 1).cloned();
         input.remove(index + 1); // rm the file name
