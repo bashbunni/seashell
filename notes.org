@@ -10,6 +10,8 @@ supported by default to quit the application. You can also use ~ctrlc~ crate to 
 // current match restrictions: it's only on command.trim() that we're matching, not callable.
 
 I almost got caught going in circles for a solution trying to find the  "best" one, when it's easier to go from a specific point.
+** Unfortunately, it is truly just time in the saddle
+With every problem I solve, I find myself more comfortable with not knowing, yet feeling confident that I can solve it. I'm okay to explore different solutions, knowing that each attempt will bring me closer to my final (nice, readable) solution. No matter how icky it looks, once it's working I WILL have time to clean it up, play with a structure that makes my solution clear to my future self and others. This practice of pruning and refactoring is valuable, it teaches you to see more available solutions as you move forward and to spot patterns in your own problem solving that can be improved.
 * Lexical Analysis
 converting text into lexical tokens (in natural language: nouns, verbs, etc.) 
 This is probably overkill for now, but AST/lexical analysis may be worth looking at down the line.
@@ -19,3 +21,4 @@ if let Some() vs unwrap
 ** look at strum
 can do "fancy stuff"....
 ** look at generics (paths in particular)
+** what is a boxed trait (dynamic dispatch)? When is it appropriate to use this?
